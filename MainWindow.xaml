@@ -1,0 +1,17 @@
+﻿<Window x:Class="MMH.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MMH"
+        mc:Ignorable="d"
+        Title="MMH" Height="400" Width="200">
+    <Grid>
+
+        <StackPanel Orientation="Vertical">
+            <Label Content="MMH (Multi Monitor Helper)" HorizontalAlignment="Center" FontSize="12" />
+            <Button Name="btnLeftOnly" Content="Left Only" Click="btnLeftOnly_Click" />
+            <Button Name="btnThreeMonitors" Content="3 Monitors" Click="btnThreeMonitors_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

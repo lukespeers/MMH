@@ -1,0 +1,66 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>MMH.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="scripts\DisableLG_display.bat" />
+    <None Remove="scripts\DisableLG_Display.ps1" />
+    <None Remove="scripts\Enable3Displays.bat" />
+    <None Remove="scripts\Enable3Displays.ps1" />
+    <None Remove="scripts\EnableCPrimary.bat" />
+    <None Remove="scripts\EnableCPrimary.ps1" />
+    <None Remove="scripts\EnableLG_display.bat" />
+    <None Remove="scripts\EnableLG_Display.ps1" />
+    <None Remove="scripts\EnableLPrimary.bat" />
+    <None Remove="scripts\EnableLPrimary.ps1" />
+    <None Remove="scripts\README_Enable-Disable script.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cake.Powershell" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="MMH.ico" />
+    <Content Include="scripts\DisableLG_display.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\DisableLG_Display.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\Enable3Displays.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\Enable3Displays.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\EnableCPrimary.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\EnableCPrimary.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\EnableLG_display.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\EnableLG_Display.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\EnableLPrimary.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\EnableLPrimary.ps1">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="scripts\README_Enable-Disable script.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
