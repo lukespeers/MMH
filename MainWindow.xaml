@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMH"
         mc:Ignorable="d"
-        Title="MMH" Height="450" Width="510"  >
-    <ScrollViewer Margin="0,0,-29,-125">
+        Title="MMH" Height="450" Width="555"  >
+    <ScrollViewer Margin="0,0,-29,-6">
         <StackPanel Orientation="Vertical" Margin="10">
             <Label Content="MMH (Multi Monitor Helper)" HorizontalAlignment="Center" FontSize="12" />
 
@@ -14,37 +14,49 @@
 
                 <!-- Profile 1 -->
                 <GroupBox Header="Profile 1" Margin="0,0,10,0">
-                    <StackPanel>
+                    <StackPanel Width="150" Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
                             <CheckBox x:Name="Profile1_Display1" Content="D1" Margin="2"/>
                             <CheckBox x:Name="Profile1_Display2" Content="D2" Margin="2"/>
                             <CheckBox x:Name="Profile1_Display3" Content="D3" Margin="2"/>
                         </StackPanel>
-                        <Button Content="Apply" Click="ApplyProfile1_Click" />
+
+                        <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
+                        <TextBox x:Name="Profile1_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
+
+                        <Button Content="Apply" Click="ApplyProfile1_Click" Margin="0,6,0,0" />
                     </StackPanel>
                 </GroupBox>
 
                 <!-- Profile 2 -->
                 <GroupBox Header="Profile 2" Margin="0,0,10,0">
-                    <StackPanel>
+                    <StackPanel Width="150" Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
                             <CheckBox x:Name="Profile2_Display1" Content="D1" Margin="2"/>
                             <CheckBox x:Name="Profile2_Display2" Content="D2" Margin="2"/>
                             <CheckBox x:Name="Profile2_Display3" Content="D3" Margin="2"/>
                         </StackPanel>
-                        <Button Content="Apply" Click="ApplyProfile2_Click" />
+
+                        <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
+                        <TextBox x:Name="Profile2_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
+
+                        <Button Content="Apply" Click="ApplyProfile2_Click" Margin="0,6,0,0" />
                     </StackPanel>
                 </GroupBox>
 
                 <!-- Profile 3 -->
                 <GroupBox Header="Profile 3" >
-                    <StackPanel>
+                    <StackPanel Width="150" Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
                             <CheckBox x:Name="Profile3_Display1" Content="D1" Margin="2"/>
                             <CheckBox x:Name="Profile3_Display2" Content="D2" Margin="2"/>
                             <CheckBox x:Name="Profile3_Display3" Content="D3" Margin="2"/>
                         </StackPanel>
-                        <Button Content="Apply" Click="ApplyProfile3_Click" />
+
+                        <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
+                        <TextBox x:Name="Profile3_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
+
+                        <Button Content="Apply" Click="ApplyProfile3_Click" Margin="0,6,0,0" />
                     </StackPanel>
                 </GroupBox>
 
@@ -63,7 +75,7 @@
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Auto"
-                         Height="200"
+                         Height="150"
                          FontFamily="Consolas"
                          FontSize="12" Width="445"/>
 
