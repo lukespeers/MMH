@@ -42,14 +42,26 @@ namespace MMH
         }
 
         // Helper: build script lines based on enabled array (index 0 -> display 1)
-        private string BuildAlterDisplaysScript(bool[] enabled)
+        // Now honors a requested primaryIndex (0-based). If the requested primary is not enabled,
+        // falls back to the first enabled display (previous behavior).
+        private string BuildAlterDisplaysScript(bool[] enabled, int primaryIndex)
         {
             var sb = new StringBuilder();
 
-            // Find first enabled display (if any) so we can set it primary immediately after enabling it
+            // Determine which display should be set primary when enabling
             int firstEnabled = Array.FindIndex(enabled, v => v);
+            int primaryToSet = -1;
 
-            // 1) Emit Enable lines first (and set primary immediately after enabling the first enabled)
+            if (primaryIndex >= 0 && primaryIndex < enabled.Length && enabled[primaryIndex])
+            {
+                primaryToSet = primaryIndex;
+            }
+            else
+            {
+                primaryToSet = firstEnabled;
+            }
+
+            // 1) Emit Enable lines first (and set primary immediately after enabling the chosen primary)
             for (int i = 0; i < enabled.Length; i++)
             {
                 if (enabled[i])
@@ -57,7 +69,7 @@ namespace MMH
                     int displayNumber = i + 1;
                     sb.AppendLine($"Enable-Display {displayNumber}");
 
-                    if (i == firstEnabled)
+                    if (i == primaryToSet)
                     {
                         sb.AppendLine($"Set-DisplayPrimary {displayNumber}");
                     }
@@ -106,7 +118,9 @@ namespace MMH
                 Profile1_Display3.IsChecked == true
             };
 
-            string script = BuildAlterDisplaysScript(enabled);
+            int primaryIdx = GetProfilePrimaryIndex(1);
+
+            string script = BuildAlterDisplaysScript(enabled, primaryIdx);
             WriteScript(AlterDisplaysPath, script);
             RunScript(AlterDisplaysPath);
         }
@@ -120,7 +134,9 @@ namespace MMH
                 Profile2_Display3.IsChecked == true
             };
 
-            string script = BuildAlterDisplaysScript(enabled);
+            int primaryIdx = GetProfilePrimaryIndex(2);
+
+            string script = BuildAlterDisplaysScript(enabled, primaryIdx);
             WriteScript(AlterDisplaysPath, script);
             RunScript(AlterDisplaysPath);
         }
@@ -134,9 +150,36 @@ namespace MMH
                 Profile3_Display3.IsChecked == true
             };
 
-            string script = BuildAlterDisplaysScript(enabled);
+            int primaryIdx = GetProfilePrimaryIndex(3);
+
+            string script = BuildAlterDisplaysScript(enabled, primaryIdx);
             WriteScript(AlterDisplaysPath, script);
             RunScript(AlterDisplaysPath);
+        }
+
+        private int GetProfilePrimaryIndex(int profileNumber)
+        {
+            // returns 0-based index of selected primary, or -1 if none selected
+            switch (profileNumber)
+            {
+                case 1:
+                    if (Profile1_Primary1.IsChecked == true) return 0;
+                    if (Profile1_Primary2.IsChecked == true) return 1;
+                    if (Profile1_Primary3.IsChecked == true) return 2;
+                    return -1;
+                case 2:
+                    if (Profile2_Primary1.IsChecked == true) return 0;
+                    if (Profile2_Primary2.IsChecked == true) return 1;
+                    if (Profile2_Primary3.IsChecked == true) return 2;
+                    return -1;
+                case 3:
+                    if (Profile3_Primary1.IsChecked == true) return 0;
+                    if (Profile3_Primary2.IsChecked == true) return 1;
+                    if (Profile3_Primary3.IsChecked == true) return 2;
+                    return -1;
+                default:
+                    return -1;
+            }
         }
 
         private void RunScript(string psScriptName)
@@ -235,6 +278,9 @@ namespace MMH
                             Profile1_Display2.IsChecked = data.Profile1.Displays.Length > 1 && data.Profile1.Displays[1];
                             Profile1_Display3.IsChecked = data.Profile1.Displays.Length > 2 && data.Profile1.Displays[2];
                             Profile1_Description.Text = data.Profile1.Description ?? string.Empty;
+
+                            // primary
+                            SetPrimaryRadioButtons(1, data.Profile1.PrimaryIndex);
                         }
 
                         if (data.Profile2 != null)
@@ -243,6 +289,9 @@ namespace MMH
                             Profile2_Display2.IsChecked = data.Profile2.Displays.Length > 1 && data.Profile2.Displays[1];
                             Profile2_Display3.IsChecked = data.Profile2.Displays.Length > 2 && data.Profile2.Displays[2];
                             Profile2_Description.Text = data.Profile2.Description ?? string.Empty;
+
+                            // primary
+                            SetPrimaryRadioButtons(2, data.Profile2.PrimaryIndex);
                         }
 
                         if (data.Profile3 != null)
@@ -251,6 +300,9 @@ namespace MMH
                             Profile3_Display2.IsChecked = data.Profile3.Displays.Length > 1 && data.Profile3.Displays[1];
                             Profile3_Display3.IsChecked = data.Profile3.Displays.Length > 2 && data.Profile3.Displays[2];
                             Profile3_Description.Text = data.Profile3.Description ?? string.Empty;
+
+                            // primary
+                            SetPrimaryRadioButtons(3, data.Profile3.PrimaryIndex);
                         }
                     }
                 }
@@ -258,6 +310,31 @@ namespace MMH
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to load profiles: {ex.Message}");
+            }
+        }
+
+        private void SetPrimaryRadioButtons(int profileNumber, int primaryIndex)
+        {
+            // Set radio buttons for given profile using a 0-based primaryIndex (-1 = none)
+            if (primaryIndex < 0) primaryIndex = -1;
+
+            switch (profileNumber)
+            {
+                case 1:
+                    Profile1_Primary1.IsChecked = primaryIndex == 0;
+                    Profile1_Primary2.IsChecked = primaryIndex == 1;
+                    Profile1_Primary3.IsChecked = primaryIndex == 2;
+                    break;
+                case 2:
+                    Profile2_Primary1.IsChecked = primaryIndex == 0;
+                    Profile2_Primary2.IsChecked = primaryIndex == 1;
+                    Profile2_Primary3.IsChecked = primaryIndex == 2;
+                    break;
+                case 3:
+                    Profile3_Primary1.IsChecked = primaryIndex == 0;
+                    Profile3_Primary2.IsChecked = primaryIndex == 1;
+                    Profile3_Primary3.IsChecked = primaryIndex == 2;
+                    break;
             }
         }
 
@@ -270,17 +347,20 @@ namespace MMH
                     Profile1 = new ProfileData
                     {
                         Displays = new[] { Profile1_Display1.IsChecked == true, Profile1_Display2.IsChecked == true, Profile1_Display3.IsChecked == true },
-                        Description = Profile1_Description.Text ?? string.Empty
+                        Description = Profile1_Description.Text ?? string.Empty,
+                        PrimaryIndex = GetProfilePrimaryIndex(1)
                     },
                     Profile2 = new ProfileData
                     {
                         Displays = new[] { Profile2_Display1.IsChecked == true, Profile2_Display2.IsChecked == true, Profile2_Display3.IsChecked == true },
-                        Description = Profile2_Description.Text ?? string.Empty
+                        Description = Profile2_Description.Text ?? string.Empty,
+                        PrimaryIndex = GetProfilePrimaryIndex(2)
                     },
                     Profile3 = new ProfileData
                     {
                         Displays = new[] { Profile3_Display1.IsChecked == true, Profile3_Display2.IsChecked == true, Profile3_Display3.IsChecked == true },
-                        Description = Profile3_Description.Text ?? string.Empty
+                        Description = Profile3_Description.Text ?? string.Empty,
+                        PrimaryIndex = GetProfilePrimaryIndex(3)
                     }
                 };
 
@@ -313,5 +393,8 @@ namespace MMH
         // default to three displays for backward compatibility
         public bool[] Displays { get; set; } = new[] { false, false, false };
         public string? Description { get; set; } = string.Empty;
+
+        // 0-based index of the primary display for this profile. -1 = none selected.
+        public int PrimaryIndex { get; set; } = -1;
     }
 }
