@@ -19,8 +19,6 @@ namespace MMH
     {
         // Absolute paths requested by the user
         private const string AlterDisplaysPath = @"AlterDisplays.ps1";
-        private const string AlterDisplaysPath2 = @"AlterDisplays2.ps1";
-        private const string AlterDisplaysPath3 = @"AlterDisplays3.ps1";
 
         private string ScriptDirectory = "";
         private string ScriptsFolder = "";
@@ -123,8 +121,8 @@ namespace MMH
             };
 
             string script = BuildAlterDisplaysScript(enabled);
-            WriteScript(AlterDisplaysPath2, script);
-            RunScript(AlterDisplaysPath2);
+            WriteScript(AlterDisplaysPath, script);
+            RunScript(AlterDisplaysPath);
         }
 
         private void ApplyProfile3_Click(object sender, RoutedEventArgs e)
@@ -137,8 +135,8 @@ namespace MMH
             };
 
             string script = BuildAlterDisplaysScript(enabled);
-            WriteScript(AlterDisplaysPath3, script);
-            RunScript(AlterDisplaysPath3);
+            WriteScript(AlterDisplaysPath, script);
+            RunScript(AlterDisplaysPath);
         }
 
         private void RunScript(string psScriptName)
