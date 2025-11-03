@@ -8,7 +8,75 @@
         Title="MMH" Height="435" Width="566">
     <ScrollViewer Margin="0,0,-29,-125">
         <StackPanel Orientation="Vertical" Margin="10">
-            <Label Content="MMH (Multi Monitor Helper)" HorizontalAlignment="Center" FontSize="12" />
+            <!-- Replaced the simple Label with a styled Border + TextBlock that has gradient background,
+     gradient text, drop shadow glow and a short entrance animation. Paste directly in place of the Label. -->
+            <Border HorizontalAlignment="Center"
+        CornerRadius="8"
+        Padding="12,8"
+        Margin="0,6,0,10"
+        SnapsToDevicePixels="True">
+
+                <Border.Effect>
+                    <DropShadowEffect Color="#88000000" BlurRadius="10" ShadowDepth="3"/>
+                </Border.Effect>
+
+                <Grid>
+                    <TextBlock Text="MMH (Multi Monitor Helper)"
+                   FontFamily="Segoe UI Semibold"
+                   FontSize="18"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   TextOptions.TextFormattingMode="Ideal"
+                   TextOptions.TextRenderingMode="ClearType"
+                   RenderTransformOrigin="0.5,0.5"
+                   Opacity="0.98">
+                        <TextBlock.Foreground>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#FFFFFFFF" Offset="0.0"/>
+                                <GradientStop Color="#FFE6F7FF" Offset="1.0"/>
+                            </LinearGradientBrush>
+                        </TextBlock.Foreground>
+
+            <!-- subtle glow (named so we can animate opacity) -->
+                        <TextBlock.Effect>
+                            <DropShadowEffect x:Name="titleGlow"
+                                  Color="#FFFFFFFF"
+                                  BlurRadius="12"
+                                  ShadowDepth="0"
+                                  Opacity="0.0"/>
+                        </TextBlock.Effect>
+
+                        <TextBlock.RenderTransform>
+                            <ScaleTransform x:Name="titleScale" ScaleX="1" ScaleY="1"/>
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+
+                    <Grid.Triggers>
+                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <!-- pop / settle -->
+                                    <DoubleAnimation Storyboard.TargetName="titleScale"
+                                         Storyboard.TargetProperty="ScaleX"
+                                         From="0.94" To="1.0"
+                                         Duration="0:0:0.28"
+                                         AccelerationRatio="0.2" DecelerationRatio="0.8"/>
+                                    <DoubleAnimation Storyboard.TargetName="titleScale"
+                                         Storyboard.TargetProperty="ScaleY"
+                                         From="0.94" To="1.0"
+                                         Duration="0:0:0.28"
+                                         AccelerationRatio="0.2" DecelerationRatio="0.8"/>
+                                    <!-- glow fade-in -->
+                                    <DoubleAnimation Storyboard.TargetName="titleGlow"
+                                         Storyboard.TargetProperty="Opacity"
+                                         From="0.0" To="0.7"
+                                         Duration="0:0:0.35"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Grid.Triggers>
+                </Grid>
+            </Border>
 
             <StackPanel Orientation="Horizontal" Margin="0,10,0,10" HorizontalAlignment="Stretch" >
 
