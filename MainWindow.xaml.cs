@@ -26,6 +26,9 @@ namespace MMH
         // Config file next to the executable as requested
         private string ConfigFilePath = "";
 
+        // Current display count used to generate UI
+        private int DisplayCount = 3;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -34,11 +37,64 @@ namespace MMH
 
             ConfigFilePath = System.IO.Path.Combine(ScriptDirectory, "profiles.json");
 
-            // Load any previously saved profiles
+            // Load any previously saved profiles (may adjust display count)
             LoadProfiles();
 
             // Save on close
             this.Closing += MainWindow_Closing;
+        }
+
+        // --- UI generation for dynamic number of displays ---
+
+        private void GenerateConfigurator(int count)
+        {
+            if (count < 1) count = 1;
+            DisplayCount = count;
+            DisplayCountTextBox.Text = DisplayCount.ToString();
+
+            // Helper to populate a profile's two panels
+            void PopulateProfilePanels(StackPanel displaysPanel, StackPanel primaryPanel, int profileNumber)
+            {
+                displaysPanel.Children.Clear();
+                primaryPanel.Children.Clear();
+
+                for (int i = 0; i < DisplayCount; i++)
+                {
+                    var cb = new CheckBox
+                    {
+                        Content = $"D{i + 1}",
+                        Tag = i,
+                        Margin = new Thickness(2)
+                    };
+                    displaysPanel.Children.Add(cb);
+
+                    var rb = new RadioButton
+                    {
+                        Content = (i + 1).ToString(),
+                        GroupName = $"Profile{profileNumber}Primary",
+                        Tag = i,
+                        Margin = new Thickness(2)
+                    };
+                    primaryPanel.Children.Add(rb);
+                }
+            }
+
+            PopulateProfilePanels(Profile1_DisplaysPanel, Profile1_PrimaryPanel, 1);
+            PopulateProfilePanels(Profile2_DisplaysPanel, Profile2_PrimaryPanel, 2);
+            PopulateProfilePanels(Profile3_DisplaysPanel, Profile3_PrimaryPanel, 3);
+        }
+
+        // Regenerate button click
+        private void Regenerate_Click(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(DisplayCountTextBox.Text.Trim(), out int requested) && requested > 0)
+            {
+                GenerateConfigurator(requested);
+            }
+            else
+            {
+                MessageBox.Show("Enter a valid positive integer for displays.", "Invalid input", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         // Helper: build script lines based on enabled array (index 0 -> display 1)
@@ -108,15 +164,11 @@ namespace MMH
             }
         }
 
-        // Apply handlers for each profile
+        // Apply handlers for each profile (now read panels dynamically)
         private void ApplyProfile1_Click(object sender, RoutedEventArgs e)
         {
-            var enabled = new bool[3]
-            {
-                Profile1_Display1.IsChecked == true,
-                Profile1_Display2.IsChecked == true,
-                Profile1_Display3.IsChecked == true
-            };
+            var enabled = Profile1_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag)
+                .Select(cb => cb.IsChecked == true).ToArray();
 
             int primaryIdx = GetProfilePrimaryIndex(1);
 
@@ -127,12 +179,8 @@ namespace MMH
 
         private void ApplyProfile2_Click(object sender, RoutedEventArgs e)
         {
-            var enabled = new bool[3]
-            {
-                Profile2_Display1.IsChecked == true,
-                Profile2_Display2.IsChecked == true,
-                Profile2_Display3.IsChecked == true
-            };
+            var enabled = Profile2_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag)
+                .Select(cb => cb.IsChecked == true).ToArray();
 
             int primaryIdx = GetProfilePrimaryIndex(2);
 
@@ -143,12 +191,8 @@ namespace MMH
 
         private void ApplyProfile3_Click(object sender, RoutedEventArgs e)
         {
-            var enabled = new bool[3]
-            {
-                Profile3_Display1.IsChecked == true,
-                Profile3_Display2.IsChecked == true,
-                Profile3_Display3.IsChecked == true
-            };
+            var enabled = Profile3_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag)
+                .Select(cb => cb.IsChecked == true).ToArray();
 
             int primaryIdx = GetProfilePrimaryIndex(3);
 
@@ -159,27 +203,19 @@ namespace MMH
 
         private int GetProfilePrimaryIndex(int profileNumber)
         {
-            // returns 0-based index of selected primary, or -1 if none selected
-            switch (profileNumber)
+            StackPanel panel = profileNumber switch
             {
-                case 1:
-                    if (Profile1_Primary1.IsChecked == true) return 0;
-                    if (Profile1_Primary2.IsChecked == true) return 1;
-                    if (Profile1_Primary3.IsChecked == true) return 2;
-                    return -1;
-                case 2:
-                    if (Profile2_Primary1.IsChecked == true) return 0;
-                    if (Profile2_Primary2.IsChecked == true) return 1;
-                    if (Profile2_Primary3.IsChecked == true) return 2;
-                    return -1;
-                case 3:
-                    if (Profile3_Primary1.IsChecked == true) return 0;
-                    if (Profile3_Primary2.IsChecked == true) return 1;
-                    if (Profile3_Primary3.IsChecked == true) return 2;
-                    return -1;
-                default:
-                    return -1;
-            }
+                1 => Profile1_PrimaryPanel,
+                2 => Profile2_PrimaryPanel,
+                3 => Profile3_PrimaryPanel,
+                _ => null
+            };
+
+            if (panel == null) return -1;
+
+            var rb = panel.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true);
+            if (rb != null && rb.Tag is int idx) return idx;
+            return -1;
         }
 
         private void RunScript(string psScriptName)
@@ -264,77 +300,100 @@ namespace MMH
         {
             try
             {
+                int maxDisplaysFound = DisplayCount;
+
+                ProfilesData? data = null;
+
                 if (File.Exists(ConfigFilePath))
                 {
                     string json = File.ReadAllText(ConfigFilePath);
                     var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    ProfilesData? data = JsonSerializer.Deserialize<ProfilesData>(json, options);
+                    data = JsonSerializer.Deserialize<ProfilesData>(json, options);
+                }
 
-                    if (data != null)
+                // if profile data exists, determine the max displays count used previously
+                if (data != null)
+                {
+                    if (data.Profile1?.Displays != null)
+                        maxDisplaysFound = Math.Max(maxDisplaysFound, data.Profile1.Displays.Length);
+                    if (data.Profile2?.Displays != null)
+                        maxDisplaysFound = Math.Max(maxDisplaysFound, data.Profile2.Displays.Length);
+                    if (data.Profile3?.Displays != null)
+                        maxDisplaysFound = Math.Max(maxDisplaysFound, data.Profile3.Displays.Length);
+                }
+
+                // Regenerate UI to accommodate maxDisplaysFound
+                GenerateConfigurator(maxDisplaysFound);
+
+                // Now populate values if data present
+                if (data != null)
+                {
+                    if (data.Profile1 != null)
                     {
-                        if (data.Profile1 != null)
+                        var checks = Profile1_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag).ToArray();
+                        for (int i = 0; i < checks.Length; i++)
                         {
-                            Profile1_Display1.IsChecked = data.Profile1.Displays.Length > 0 && data.Profile1.Displays[0];
-                            Profile1_Display2.IsChecked = data.Profile1.Displays.Length > 1 && data.Profile1.Displays[1];
-                            Profile1_Display3.IsChecked = data.Profile1.Displays.Length > 2 && data.Profile1.Displays[2];
-                            Profile1_Description.Text = data.Profile1.Description ?? string.Empty;
-
-                            // primary
-                            SetPrimaryRadioButtons(1, data.Profile1.PrimaryIndex);
+                            checks[i].IsChecked = i < data.Profile1.Displays.Length && data.Profile1.Displays[i];
                         }
-
-                        if (data.Profile2 != null)
-                        {
-                            Profile2_Display1.IsChecked = data.Profile2.Displays.Length > 0 && data.Profile2.Displays[0];
-                            Profile2_Display2.IsChecked = data.Profile2.Displays.Length > 1 && data.Profile2.Displays[1];
-                            Profile2_Display3.IsChecked = data.Profile2.Displays.Length > 2 && data.Profile2.Displays[2];
-                            Profile2_Description.Text = data.Profile2.Description ?? string.Empty;
-
-                            // primary
-                            SetPrimaryRadioButtons(2, data.Profile2.PrimaryIndex);
-                        }
-
-                        if (data.Profile3 != null)
-                        {
-                            Profile3_Display1.IsChecked = data.Profile3.Displays.Length > 0 && data.Profile3.Displays[0];
-                            Profile3_Display2.IsChecked = data.Profile3.Displays.Length > 1 && data.Profile3.Displays[1];
-                            Profile3_Display3.IsChecked = data.Profile3.Displays.Length > 2 && data.Profile3.Displays[2];
-                            Profile3_Description.Text = data.Profile3.Description ?? string.Empty;
-
-                            // primary
-                            SetPrimaryRadioButtons(3, data.Profile3.PrimaryIndex);
-                        }
+                        Profile1_Description.Text = data.Profile1.Description ?? string.Empty;
+                        SetPrimaryRadioButtons(1, data.Profile1.PrimaryIndex);
                     }
+
+                    if (data.Profile2 != null)
+                    {
+                        var checks = Profile2_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag).ToArray();
+                        for (int i = 0; i < checks.Length; i++)
+                        {
+                            checks[i].IsChecked = i < data.Profile2.Displays.Length && data.Profile2.Displays[i];
+                        }
+                        Profile2_Description.Text = data.Profile2.Description ?? string.Empty;
+                        SetPrimaryRadioButtons(2, data.Profile2.PrimaryIndex);
+                    }
+
+                    if (data.Profile3 != null)
+                    {
+                        var checks = Profile3_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag).ToArray();
+                        for (int i = 0; i < checks.Length; i++)
+                        {
+                            checks[i].IsChecked = i < data.Profile3.Displays.Length && data.Profile3.Displays[i];
+                        }
+                        Profile3_Description.Text = data.Profile3.Description ?? string.Empty;
+                        SetPrimaryRadioButtons(3, data.Profile3.PrimaryIndex);
+                    }
+                }
+                else
+                {
+                    // no saved data: default to 3 displays
+                    if (DisplayCount < 3)
+                        GenerateConfigurator(3);
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to load profiles: {ex.Message}");
+                // ensure at least the default UI exists
+                GenerateConfigurator(DisplayCount);
             }
         }
 
         private void SetPrimaryRadioButtons(int profileNumber, int primaryIndex)
         {
-            // Set radio buttons for given profile using a 0-based primaryIndex (-1 = none)
-            if (primaryIndex < 0) primaryIndex = -1;
-
-            switch (profileNumber)
+            StackPanel panel = profileNumber switch
             {
-                case 1:
-                    Profile1_Primary1.IsChecked = primaryIndex == 0;
-                    Profile1_Primary2.IsChecked = primaryIndex == 1;
-                    Profile1_Primary3.IsChecked = primaryIndex == 2;
-                    break;
-                case 2:
-                    Profile2_Primary1.IsChecked = primaryIndex == 0;
-                    Profile2_Primary2.IsChecked = primaryIndex == 1;
-                    Profile2_Primary3.IsChecked = primaryIndex == 2;
-                    break;
-                case 3:
-                    Profile3_Primary1.IsChecked = primaryIndex == 0;
-                    Profile3_Primary2.IsChecked = primaryIndex == 1;
-                    Profile3_Primary3.IsChecked = primaryIndex == 2;
-                    break;
+                1 => Profile1_PrimaryPanel,
+                2 => Profile2_PrimaryPanel,
+                3 => Profile3_PrimaryPanel,
+                _ => null
+            };
+
+            if (panel == null) return;
+
+            foreach (var rb in panel.Children.OfType<RadioButton>())
+            {
+                if (rb.Tag is int idx)
+                    rb.IsChecked = (idx == primaryIndex);
+                else
+                    rb.IsChecked = false;
             }
         }
 
@@ -346,19 +405,19 @@ namespace MMH
                 {
                     Profile1 = new ProfileData
                     {
-                        Displays = new[] { Profile1_Display1.IsChecked == true, Profile1_Display2.IsChecked == true, Profile1_Display3.IsChecked == true },
+                        Displays = Profile1_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag).Select(cb => cb.IsChecked == true).ToArray(),
                         Description = Profile1_Description.Text ?? string.Empty,
                         PrimaryIndex = GetProfilePrimaryIndex(1)
                     },
                     Profile2 = new ProfileData
                     {
-                        Displays = new[] { Profile2_Display1.IsChecked == true, Profile2_Display2.IsChecked == true, Profile2_Display3.IsChecked == true },
+                        Displays = Profile2_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag).Select(cb => cb.IsChecked == true).ToArray(),
                         Description = Profile2_Description.Text ?? string.Empty,
                         PrimaryIndex = GetProfilePrimaryIndex(2)
                     },
                     Profile3 = new ProfileData
                     {
-                        Displays = new[] { Profile3_Display1.IsChecked == true, Profile3_Display2.IsChecked == true, Profile3_Display3.IsChecked == true },
+                        Displays = Profile3_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag).Select(cb => cb.IsChecked == true).ToArray(),
                         Description = Profile3_Description.Text ?? string.Empty,
                         PrimaryIndex = GetProfilePrimaryIndex(3)
                     }

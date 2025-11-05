@@ -78,6 +78,13 @@
                 </Grid>
             </Border>
 
+            <!-- Display count control -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,4,0,10">
+                <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays:</TextBlock>
+                <TextBox x:Name="DisplayCountTextBox" Width="25" Text="3" Margin="0,0,8,0" />
+                <Button Content="Regenerate" Click="Regenerate_Click"/>
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" Margin="0,10,0,10" HorizontalAlignment="Stretch" >
 
                 <!-- Profile 1 -->
@@ -89,19 +96,8 @@
                     </GroupBox.Header>
 
                     <StackPanel Width="150" Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <CheckBox x:Name="Profile1_Display1" Content="D1" Margin="2"/>
-                            <CheckBox x:Name="Profile1_Display2" Content="D2" Margin="2"/>
-                            <CheckBox x:Name="Profile1_Display3" Content="D3" Margin="2"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock Text="Primary:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <RadioButton x:Name="Profile1_Primary1" GroupName="Profile1Primary" Content="1" Margin="2"/>
-                            <RadioButton x:Name="Profile1_Primary2" GroupName="Profile1Primary" Content="2" Margin="2"/>
-                            <RadioButton x:Name="Profile1_Primary3" GroupName="Profile1Primary" Content="3" Margin="2"/>
-                        </StackPanel>
-
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6" x:Name="Profile1_DisplaysPanel"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4" x:Name="Profile1_PrimaryPanel"/>
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
                         <TextBox x:Name="Profile1_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
 
@@ -118,19 +114,8 @@
                     </GroupBox.Header>
 
                     <StackPanel Width="150" Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <CheckBox x:Name="Profile2_Display1" Content="D1" Margin="2"/>
-                            <CheckBox x:Name="Profile2_Display2" Content="D2" Margin="2"/>
-                            <CheckBox x:Name="Profile2_Display3" Content="D3" Margin="2"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock Text="Primary:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <RadioButton x:Name="Profile2_Primary1" GroupName="Profile2Primary" Content="1" Margin="2"/>
-                            <RadioButton x:Name="Profile2_Primary2" GroupName="Profile2Primary" Content="2" Margin="2"/>
-                            <RadioButton x:Name="Profile2_Primary3" GroupName="Profile2Primary" Content="3" Margin="2"/>
-                        </StackPanel>
-
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6" x:Name="Profile2_DisplaysPanel"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4" x:Name="Profile2_PrimaryPanel"/>
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
                         <TextBox x:Name="Profile2_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
 
@@ -147,19 +132,8 @@
                     </GroupBox.Header>
 
                     <StackPanel Width="150" Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <CheckBox x:Name="Profile3_Display1" Content="D1" Margin="2"/>
-                            <CheckBox x:Name="Profile3_Display2" Content="D2" Margin="2"/>
-                            <CheckBox x:Name="Profile3_Display3" Content="D3" Margin="2"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock Text="Primary:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                            <RadioButton x:Name="Profile3_Primary1" GroupName="Profile3Primary" Content="1" Margin="2"/>
-                            <RadioButton x:Name="Profile3_Primary2" GroupName="Profile3Primary" Content="2" Margin="2"/>
-                            <RadioButton x:Name="Profile3_Primary3" GroupName="Profile3Primary" Content="3" Margin="2"/>
-                        </StackPanel>
-
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6" x:Name="Profile3_DisplaysPanel"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4" x:Name="Profile3_PrimaryPanel"/>
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
                         <TextBox x:Name="Profile3_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
 
