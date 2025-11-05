@@ -62,7 +62,7 @@ namespace MMH
                 {
                     var cb = new CheckBox
                     {
-                        Content = $"D{i + 1}",
+                        Content = $"{i + 1}",
                         Tag = i,
                         Margin = new Thickness(2)
                     };

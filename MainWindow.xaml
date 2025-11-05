@@ -85,7 +85,7 @@
                 <Button Content="Regenerate" Click="Regenerate_Click"/>
             </StackPanel>
 
-            <StackPanel Orientation="Horizontal" Margin="0,10,0,10" HorizontalAlignment="Stretch" >
+            <WrapPanel  Margin="0,10,0,10" HorizontalAlignment="Stretch" >
 
                 <!-- Profile 1 -->
                 <GroupBox Margin="0,0,10,0" BorderBrush="#FFBBDDF0" Background="#FFF6FBFD">
@@ -96,8 +96,16 @@
                     </GroupBox.Header>
 
                     <StackPanel Width="150" Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6" x:Name="Profile1_DisplaysPanel"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4" x:Name="Profile1_PrimaryPanel"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays</TextBlock>
+                            <StackPanel Orientation="Horizontal" x:Name="Profile1_DisplaysPanel"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Primary</TextBlock>
+                            <StackPanel Orientation="Horizontal" x:Name="Profile1_PrimaryPanel"/>
+                        </StackPanel>
+
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
                         <TextBox x:Name="Profile1_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
 
@@ -114,8 +122,16 @@
                     </GroupBox.Header>
 
                     <StackPanel Width="150" Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6" x:Name="Profile2_DisplaysPanel"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4" x:Name="Profile2_PrimaryPanel"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays</TextBlock>
+                            <StackPanel Orientation="Horizontal" x:Name="Profile2_DisplaysPanel"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Primary</TextBlock>
+                            <StackPanel Orientation="Horizontal" x:Name="Profile2_PrimaryPanel"/>
+                        </StackPanel>
+
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
                         <TextBox x:Name="Profile2_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
 
@@ -132,24 +148,32 @@
                     </GroupBox.Header>
 
                     <StackPanel Width="150" Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6" x:Name="Profile3_DisplaysPanel"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4" x:Name="Profile3_PrimaryPanel"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays</TextBlock>
+                            <StackPanel Orientation="Horizontal" x:Name="Profile3_DisplaysPanel"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Primary</TextBlock>
+                            <StackPanel Orientation="Horizontal" x:Name="Profile3_PrimaryPanel"/>
+                        </StackPanel>
+
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
                         <TextBox x:Name="Profile3_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
 
                         <Button Content="Apply" Click="ApplyProfile3_Click" Margin="0,6,0,0" />
                     </StackPanel>
                 </GroupBox>
+        
+            </WrapPanel>
 
-            </StackPanel>
-
-            <Grid Margin="2,4,13,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
-                <TextBox Grid.Row="1" x:Name="ScriptPreview" 
+        <Grid Margin="2,4,13,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
+                    <TextBox Grid.Row="1" x:Name="ScriptPreview" 
                          IsReadOnly="True"
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto"
@@ -158,9 +182,8 @@
                          FontFamily="Consolas"
                          FontSize="12"/>
 
-            </Grid>
+                </Grid>
 
-
-        </StackPanel>
+</StackPanel>
     </ScrollViewer>
 </Window>
