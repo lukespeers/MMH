@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMH"
         mc:Ignorable="d"
-        Title="MMH" Height="461" Width="566">
-    <ScrollViewer Margin="0,0,-29,-125">
+        Title="MMH" Height="502" Width="672">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Orientation="Vertical" Margin="10">
             <!-- Replaced the simple Label with a styled Border + TextBlock that has gradient background,
      gradient text, drop shadow glow and a short entrance animation. Paste directly in place of the Label. -->
@@ -85,24 +85,30 @@
                 <Button Content="Regenerate" Click="Regenerate_Click"/>
             </StackPanel>
 
-            <WrapPanel  Margin="0,10,0,10" HorizontalAlignment="Stretch" >
+            <!-- Changed from a horizontal StackPanel to a 3-column Grid so GroupBoxes stretch equally -->
+            <Grid Margin="0,10,0,10" HorizontalAlignment="Stretch" >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
                 <!-- Profile 1 -->
-                <GroupBox Margin="0,0,10,0" BorderBrush="#FFBBDDF0" Background="#FFF6FBFD">
+                <GroupBox Grid.Column="0" Margin="0,0,0,0" BorderBrush="#FFBBDDF0" Background="#FFF6FBFD" HorizontalAlignment="Stretch">
                     <GroupBox.Header>
                         <Border Background="#FFDCEFF6" Padding="6">
                             <TextBlock Text="Profile 1" FontWeight="Bold"/>
                         </Border>
                     </GroupBox.Header>
 
-                    <StackPanel Width="150" Margin="4">
+                    <StackPanel Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays</TextBlock>
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
                             <StackPanel Orientation="Horizontal" x:Name="Profile1_DisplaysPanel"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Primary</TextBlock>
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
                             <StackPanel Orientation="Horizontal" x:Name="Profile1_PrimaryPanel"/>
                         </StackPanel>
 
@@ -114,21 +120,21 @@
                 </GroupBox>
 
                 <!-- Profile 2 -->
-                <GroupBox Margin="0,0,10,0" BorderBrush="#FFBEE7C8" Background="#FFFBFEF6">
+                <GroupBox Grid.Column="1" Margin="0,0,0,0" BorderBrush="#FFBEE7C8" Background="#FFFBFEF6" HorizontalAlignment="Stretch">
                     <GroupBox.Header>
                         <Border Background="#FFE8F7D9" Padding="6">
                             <TextBlock Text="Profile 2" FontWeight="Bold"/>
                         </Border>
                     </GroupBox.Header>
 
-                    <StackPanel Width="150" Margin="4">
+                    <StackPanel Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays</TextBlock>
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
                             <StackPanel Orientation="Horizontal" x:Name="Profile2_DisplaysPanel"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Primary</TextBlock>
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
                             <StackPanel Orientation="Horizontal" x:Name="Profile2_PrimaryPanel"/>
                         </StackPanel>
 
@@ -140,21 +146,21 @@
                 </GroupBox>
 
                 <!-- Profile 3 -->
-                <GroupBox BorderBrush="#FFF0D1C4" Background="#FFFEFBF9">
+                <GroupBox Grid.Column="2" Margin="0,0,0,0" BorderBrush="#FFF0D1C4" Background="#FFFEFBF9" HorizontalAlignment="Stretch">
                     <GroupBox.Header>
                         <Border Background="#FFF7DBD0" Padding="6">
                             <TextBlock Text="Profile 3" FontWeight="Bold"/>
                         </Border>
                     </GroupBox.Header>
 
-                    <StackPanel Width="150" Margin="4">
+                    <StackPanel Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays</TextBlock>
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
                             <StackPanel Orientation="Horizontal" x:Name="Profile3_DisplaysPanel"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Primary</TextBlock>
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
                             <StackPanel Orientation="Horizontal" x:Name="Profile3_PrimaryPanel"/>
                         </StackPanel>
 
@@ -164,16 +170,16 @@
                         <Button Content="Apply" Click="ApplyProfile3_Click" Margin="0,6,0,0" />
                     </StackPanel>
                 </GroupBox>
-        
-            </WrapPanel>
 
-        <Grid Margin="2,4,13,0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
-                    <TextBox Grid.Row="1" x:Name="ScriptPreview" 
+            </Grid>
+
+            <Grid Margin="2,4,13,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
+                <TextBox Grid.Row="1" x:Name="ScriptPreview" 
                          IsReadOnly="True"
                          TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto"
@@ -182,8 +188,9 @@
                          FontFamily="Consolas"
                          FontSize="12"/>
 
-                </Grid>
+            </Grid>
 
-</StackPanel>
+
+        </StackPanel>
     </ScrollViewer>
 </Window>
