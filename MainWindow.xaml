@@ -83,6 +83,13 @@
                 <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays:</TextBlock>
                 <TextBox x:Name="DisplayCountTextBox" Width="25" Text="3" Margin="0,0,8,0" />
                 <Button Content="Regenerate" Click="Regenerate_Click"/>
+                <Button Content="Identify Monitors"
+                    Width="150"
+                    Click="IdentifyMonitors_Click"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top" Margin="10,0,0,0"
+                    />
+
             </StackPanel>
 
             <!-- Changed from a horizontal StackPanel to a 3-column Grid so GroupBoxes stretch equally -->
