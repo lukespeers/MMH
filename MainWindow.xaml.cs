@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Speech.Synthesis;
+using System.Management.Automation;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -216,6 +216,43 @@ namespace MMH
             var rb = panel.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true);
             if (rb != null && rb.Tag is int idx) return idx;
             return -1;
+        }
+
+        private void IdentifyMonitors_Click(object sender, RoutedEventArgs e)
+        {
+            var monitors = MonitorHelper.GetAllMonitors();
+            foreach (var monitor in monitors)
+            {
+                var badge = new MonitorBadgeWindow(monitor.Index.ToString(), monitor.Bounds);
+                badge.Show();
+
+                _ = Task.Delay(3000).ContinueWith(_ =>
+                {
+                    badge.Dispatcher.Invoke(() => badge.Close());
+                });
+            }
+        }
+
+
+        private async Task<List<string>> GetMonitorIdsAsync()
+        {
+            var ids = new List<string>();
+
+            using (PowerShell ps = PowerShell.Create())
+            {
+                ps.AddScript(@"
+            Import-Module DisplayConfig
+            Get-DisplayConfig | Select-Object -ExpandProperty DisplayId
+        ");
+
+                var results = await Task.Run(() => ps.Invoke());
+                foreach (var result in results)
+                {
+                    ids.Add(result.ToString());
+                }
+            }
+
+            return ids;
         }
 
         private void RunScript(string psScriptName)
