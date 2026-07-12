@@ -117,19 +117,23 @@ namespace MMH
                 primaryToSet = firstEnabled;
             }
 
-            // 1) Emit Enable lines first (and set primary immediately after enabling the chosen primary)
             for (int i = 0; i < enabled.Length; i++)
             {
                 if (enabled[i])
                 {
                     int displayNumber = i + 1;
                     sb.AppendLine($"Enable-Display {displayNumber}");
-
-                    if (i == primaryToSet)
-                    {
-                        sb.AppendLine($"Set-DisplayPrimary {displayNumber}");
-                    }
                 }
+            }
+
+            // if only 1 monitor is to be enabled, ensure to set primary here
+            // Count enabled monitors correctly (Array.ForEach returns void — use LINQ Count)
+            int numOfEnabledMonitors = enabled.Count(v => v);
+            bool primarySetEarly = false;
+            if (numOfEnabledMonitors == 1 && primaryToSet >= 0)
+            {
+                sb.AppendLine($"Set-DisplayPrimary {primaryToSet + 1}");
+                primarySetEarly = true;
             }
 
             // 2) Then emit Disable lines for monitors that should be disabled
@@ -141,10 +145,13 @@ namespace MMH
                     sb.AppendLine($"Disable-Display {displayNumber}");
                 }
             }
-            //sb.AppendLine($"Read-Host -Prompt \"Press Enter to close this window\""); //uncomment for debugging
 
-            // Update preview textbox (so user sees what was executed)
-            //ScriptPreview.Text = sb.ToString();
+            // 3) Finally, set the primary display (if any) at the end,
+            // but only if we didn't already set it earlier.
+            if (!primarySetEarly && primaryToSet >= 0)
+            {
+                sb.AppendLine($"Set-DisplayPrimary {primaryToSet + 1}");
+            }
 
             return sb.ToString();
         }
