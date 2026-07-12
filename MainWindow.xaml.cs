@@ -53,7 +53,7 @@ namespace MMH
             DisplayCountTextBox.Text = DisplayCount.ToString();
 
             // Helper to populate a profile's two panels
-            void PopulateProfilePanels(StackPanel displaysPanel, StackPanel primaryPanel, int profileNumber)
+            void PopulateProfilePanels(WrapPanel displaysPanel, WrapPanel primaryPanel, int profileNumber)
             {
                 displaysPanel.Children.Clear();
                 primaryPanel.Children.Clear();
@@ -144,7 +144,7 @@ namespace MMH
             //sb.AppendLine($"Read-Host -Prompt \"Press Enter to close this window\""); //uncomment for debugging
 
             // Update preview textbox (so user sees what was executed)
-            ScriptPreview.Text = sb.ToString();
+            //ScriptPreview.Text = sb.ToString();
 
             return sb.ToString();
         }
@@ -203,7 +203,7 @@ namespace MMH
 
         private int GetProfilePrimaryIndex(int profileNumber)
         {
-            StackPanel panel = profileNumber switch
+            WrapPanel panel = profileNumber switch
             {
                 1 => Profile1_PrimaryPanel,
                 2 => Profile2_PrimaryPanel,
@@ -378,7 +378,7 @@ namespace MMH
 
         private void SetPrimaryRadioButtons(int profileNumber, int primaryIndex)
         {
-            StackPanel panel = profileNumber switch
+            WrapPanel panel = profileNumber switch
             {
                 1 => Profile1_PrimaryPanel,
                 2 => Profile2_PrimaryPanel,

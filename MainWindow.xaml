@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMH"
         mc:Ignorable="d"
-        Title="MMH" Height="502" Width="672">
+        Title="MMH" Height="376" Width="672">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Orientation="Vertical" Margin="10">
             <!-- Replaced the simple Label with a styled Border + TextBlock that has gradient background,
@@ -104,12 +104,12 @@
                     <StackPanel Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
-                            <StackPanel Orientation="Horizontal" x:Name="Profile1_DisplaysPanel"/>
+                            <WrapPanel Orientation="Horizontal" x:Name="Profile1_DisplaysPanel"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
-                            <StackPanel Orientation="Horizontal" x:Name="Profile1_PrimaryPanel"/>
+                            <WrapPanel Orientation="Horizontal" x:Name="Profile1_PrimaryPanel"/>
                         </StackPanel>
 
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
@@ -130,12 +130,12 @@
                     <StackPanel Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
-                            <StackPanel Orientation="Horizontal" x:Name="Profile2_DisplaysPanel"/>
+                            <WrapPanel Orientation="Horizontal" x:Name="Profile2_DisplaysPanel"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
-                            <StackPanel Orientation="Horizontal" x:Name="Profile2_PrimaryPanel"/>
+                            <WrapPanel Orientation="Horizontal" x:Name="Profile2_PrimaryPanel"/>
                         </StackPanel>
 
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
@@ -156,12 +156,12 @@
                     <StackPanel Margin="4">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
-                            <StackPanel Orientation="Horizontal" x:Name="Profile3_DisplaysPanel"/>
+                            <WrapPanel Orientation="Horizontal" x:Name="Profile3_DisplaysPanel"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
                             <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
-                            <StackPanel Orientation="Horizontal" x:Name="Profile3_PrimaryPanel"/>
+                            <WrapPanel Orientation="Horizontal" x:Name="Profile3_PrimaryPanel"/>
                         </StackPanel>
 
                         <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
@@ -178,7 +178,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
+                <!--<TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
                 <TextBox Grid.Row="1" x:Name="ScriptPreview" 
                          IsReadOnly="True"
                          TextWrapping="Wrap"
@@ -186,7 +186,7 @@
                          HorizontalScrollBarVisibility="Auto"
                          Height="110"
                          FontFamily="Consolas"
-                         FontSize="12"/>
+                         FontSize="12"/>-->
 
             </Grid>
 
