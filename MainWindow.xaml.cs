@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.ComponentModel;
 
 namespace MMH
 {
@@ -28,6 +29,17 @@ namespace MMH
 
         // Current display count used to generate UI
         private int DisplayCount = 3;
+
+        // %LocalAppData% is always writable, unlike the folder next to the exe
+        // if the app is ever installed under Program Files.
+        private readonly string LogsFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MMH", "logs");
+
+        private string LogFilePath => Path.Combine(LogsFolder, $"mmh-{DateTime.Now:yyyy-MM-dd}.log");
+
+        private static readonly object LogLock = new object();
+
 
         public MainWindow()
         {
@@ -82,6 +94,26 @@ namespace MMH
             PopulateProfilePanels(Profile1_DisplaysPanel, Profile1_PrimaryPanel, 1);
             PopulateProfilePanels(Profile2_DisplaysPanel, Profile2_PrimaryPanel, 2);
             PopulateProfilePanels(Profile3_DisplaysPanel, Profile3_PrimaryPanel, 3);
+        }
+
+        // Logging must never crash the app, so all errors are swallowed.
+        private void AppendLog(string message)
+        {
+            try
+            {
+                Directory.CreateDirectory(LogsFolder);
+                lock (LogLock)
+                {
+                    File.AppendAllText(
+                        LogFilePath,
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}",
+                        Encoding.UTF8);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Logging failed: {ex.Message}");
+            }
         }
 
         // Regenerate button click
@@ -156,74 +188,77 @@ namespace MMH
             return sb.ToString();
         }
 
-        // Writes script and runs RunPSCommand.bat with the script path as its first argument (elevated)
-        private void WriteScript(string fileName, string scriptContents)
+        private bool WriteScript(string fileName, string scriptContents)
         {
             try
             {
-                // Write the script to the exact file requested
-                string powerShellScriptPath = System.IO.Path.Combine(ScriptsFolder, fileName);
-                File.WriteAllText(powerShellScriptPath, scriptContents, Encoding.UTF8);
+                Directory.CreateDirectory(ScriptsFolder);
+                string path = Path.Combine(ScriptsFolder, fileName);
+                File.WriteAllText(path, scriptContents, Encoding.UTF8);
+                return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to write or run script: {ex.Message}", "MMH - Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                AppendLog($"ERROR writing script: {ex}");
+                MessageBox.Show($"Failed to write script: {ex.Message}", "MMH - Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
             }
         }
 
-        // Apply handlers for each profile (now read panels dynamically)
-        private void ApplyProfile1_Click(object sender, RoutedEventArgs e)
+        private void ApplyProfile(int profileNumber)
         {
-            var enabled = Profile1_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag)
-                .Select(cb => cb.IsChecked == true).ToArray();
+            var displaysPanel = GetDisplaysPanel(profileNumber);
+            if (displaysPanel == null) return;
 
-            int primaryIdx = GetProfilePrimaryIndex(1);
+            var enabled = displaysPanel.Children.OfType<CheckBox>()
+                .OrderBy(cb => (int)cb.Tag)
+                .Select(cb => cb.IsChecked == true)
+                .ToArray();
 
-            string script = BuildAlterDisplaysScript(enabled, primaryIdx);
-            WriteScript(AlterDisplaysPath, script);
+            int primaryIdx = GetProfilePrimaryIndex(profileNumber);
+
+            string script = WrapWithDiagnostics(BuildAlterDisplaysScript(enabled, primaryIdx));
+
+            AppendLog($"--- Apply Profile {profileNumber} --- enabled=[{string.Join(",", enabled)}] primary={primaryIdx + 1}");
+            AppendLog("Generated script:" + Environment.NewLine + script);
+
+            // Don't run anything if the script couldn't be written (avoids running a stale script)
+            if (!WriteScript(AlterDisplaysPath, script))
+                return;
+
             RunScript(AlterDisplaysPath);
         }
 
-        private void ApplyProfile2_Click(object sender, RoutedEventArgs e)
+        // XAML event handlers: one-liners that keep your existing Click="..." bindings working
+        private void ApplyProfile1_Click(object sender, RoutedEventArgs e) => ApplyProfile(1);
+        private void ApplyProfile2_Click(object sender, RoutedEventArgs e) => ApplyProfile(2);
+        private void ApplyProfile3_Click(object sender, RoutedEventArgs e) => ApplyProfile(3);
+
+        private WrapPanel? GetDisplaysPanel(int profileNumber) => profileNumber switch
         {
-            var enabled = Profile2_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag)
-                .Select(cb => cb.IsChecked == true).ToArray();
-
-            int primaryIdx = GetProfilePrimaryIndex(2);
-
-            string script = BuildAlterDisplaysScript(enabled, primaryIdx);
-            WriteScript(AlterDisplaysPath, script);
-            RunScript(AlterDisplaysPath);
-        }
-
-        private void ApplyProfile3_Click(object sender, RoutedEventArgs e)
-        {
-            var enabled = Profile3_DisplaysPanel.Children.OfType<CheckBox>().OrderBy(cb => (int)cb.Tag)
-                .Select(cb => cb.IsChecked == true).ToArray();
-
-            int primaryIdx = GetProfilePrimaryIndex(3);
-
-            string script = BuildAlterDisplaysScript(enabled, primaryIdx);
-            WriteScript(AlterDisplaysPath, script);
-            RunScript(AlterDisplaysPath);
-        }
+            1 => Profile1_DisplaysPanel,
+            2 => Profile2_DisplaysPanel,
+            3 => Profile3_DisplaysPanel,
+            _ => null
+        };
 
         private int GetProfilePrimaryIndex(int profileNumber)
         {
-            WrapPanel panel = profileNumber switch
-            {
-                1 => Profile1_PrimaryPanel,
-                2 => Profile2_PrimaryPanel,
-                3 => Profile3_PrimaryPanel,
-                _ => null
-            };
-
+            var panel = GetPrimaryPanel(profileNumber);
             if (panel == null) return -1;
 
             var rb = panel.Children.OfType<RadioButton>().FirstOrDefault(r => r.IsChecked == true);
-            if (rb != null && rb.Tag is int idx) return idx;
-            return -1;
+            return rb?.Tag is int idx ? idx : -1;
         }
+
+        private WrapPanel? GetPrimaryPanel(int profileNumber) => profileNumber switch
+        {
+            1 => Profile1_PrimaryPanel,
+            2 => Profile2_PrimaryPanel,
+            3 => Profile3_PrimaryPanel,
+            _ => null
+        };
 
         private void IdentifyMonitors_Click(object sender, RoutedEventArgs e)
         {
@@ -262,23 +297,81 @@ namespace MMH
             return ids;
         }
 
+        private string WrapWithDiagnostics(string body)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendLine("Import-Module DisplayConfig");
+            sb.AppendLine("$failed = $false");
+            sb.AppendLine("Write-Host '--- Displays BEFORE ---'");
+            // If Get-DisplayInfo isn't found in your module version, use Get-DisplayConfig instead
+            sb.AppendLine("Get-DisplayInfo | Format-Table -AutoSize | Out-String -Width 200 | Write-Host");
+
+            foreach (var line in body.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                sb.AppendLine($"Write-Host 'Running: {line}'");
+                sb.AppendLine(
+                    $"try {{ {line} -ErrorAction Stop }} " +
+                    $"catch {{ Write-Warning \"FAILED: {line} - $($_.Exception.Message)\"; $failed = $true }}");
+            }
+
+            sb.AppendLine("Write-Host '--- Displays AFTER ---'");
+            sb.AppendLine("Get-DisplayInfo | Format-Table -AutoSize | Out-String -Width 200 | Write-Host");
+            sb.AppendLine("if ($failed) { exit 1 }");
+
+            return sb.ToString();
+        }
+
         private void RunScript(string psScriptName)
         {
             try
             {
-                string powerShellScriptPath = System.IO.Path.Combine(ScriptsFolder, psScriptName);
-                string powerShellCommand = $"-NoProfile -ExecutionPolicy Bypass -File \"{powerShellScriptPath}\"";
+                string scriptPath = Path.Combine(ScriptsFolder, psScriptName);
+                Directory.CreateDirectory(LogsFolder);
 
-                ProcessStartInfo startInfo = new ProcessStartInfo("powershell.exe", powerShellCommand)
+                // Escape single quotes for PowerShell single-quoted strings
+                static string Q(string s) => s.Replace("'", "''");
+
+                // Start-Transcript captures everything the script writes (output, warnings, errors)
+                // into the log file, from inside the elevated process.
+                string command =
+                    $"Start-Transcript -Path '{Q(LogFilePath)}' -Append | Out-Null; " +
+                    $"try {{ & '{Q(scriptPath)}'; exit $LASTEXITCODE }} " +
+                    $"catch {{ Write-Error $_; exit 1 }} " +
+                    $"finally {{ Stop-Transcript | Out-Null }}";
+
+                var startInfo = new ProcessStartInfo("powershell.exe",
+                    $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"")
                 {
-                    UseShellExecute = true,
+                    UseShellExecute = true,   // required for "runas"
                     Verb = "runas",
                 };
 
-                Process.Start(startInfo);
+                AppendLog($"Launching {psScriptName} (elevated)");
+                var proc = Process.Start(startInfo);
+
+                // Record the exit code once PowerShell finishes, without blocking the UI.
+                // (Written after the process exits so it doesn't collide with the transcript.)
+                if (proc != null)
+                {
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            proc.WaitForExit();
+                            AppendLog($"{psScriptName} finished with exit code {proc.ExitCode}");
+                        }
+                        finally { proc.Dispose(); }
+                    });
+                }
+            }
+            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+            {
+                AppendLog("UAC prompt was cancelled; script not run.");
             }
             catch (Exception ex)
             {
+                AppendLog($"ERROR launching script: {ex}");
                 MessageBox.Show($"An error occurred: {ex.Message}");
             }
         }
