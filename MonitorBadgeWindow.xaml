@@ -3,68 +3,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="#C0101418"
+        Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
-        ResizeMode="NoResize"
-        WindowStartupLocation="Manual">
-    <Window.Resources>
-        <!-- Same petal look as the orientation clover (display only, not clickable) -->
-        <Style x:Key="Petal" TargetType="Grid">
-            <Setter Property="Width" Value="138"/>
-            <Setter Property="Height" Value="138"/>
-        </Style>
-        <Style x:Key="PetalShape" TargetType="Ellipse">
-            <Setter Property="Fill" Value="#2F8F9D"/>
-            <Setter Property="Stroke" Value="#7FD3DC"/>
-            <Setter Property="StrokeThickness" Value="2"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.55" Color="Black"/>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="PetalText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="17"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="TextAlignment" Value="Center"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="110"/>
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-    </Window.Resources>
+        Width="200" Height="100">
+    <Border Background="#AA000000" CornerRadius="10">
+        <TextBlock x:Name="MonitorText"
+                   Foreground="White"
+                   FontSize="24"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Text="Monitor #" />
+    </Border>
 
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-        <Grid Width="360" Height="360">
-            <Grid Style="{StaticResource Petal}" HorizontalAlignment="Center" VerticalAlignment="Top">
-                <Ellipse Style="{StaticResource PetalShape}"/>
-                <TextBlock x:Name="ResolutionText" Style="{StaticResource PetalText}" Text="1920 × 1080"/>
-            </Grid>
-            <Grid Style="{StaticResource Petal}" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Ellipse Style="{StaticResource PetalShape}"/>
-                <TextBlock x:Name="OrientationText" Style="{StaticResource PetalText}" Text="Landscape"/>
-            </Grid>
-            <Grid Style="{StaticResource Petal}" HorizontalAlignment="Center" VerticalAlignment="Bottom">
-                <Ellipse Style="{StaticResource PetalShape}"/>
-                <TextBlock x:Name="PrimaryText" Style="{StaticResource PetalText}" Text="Primary"/>
-            </Grid>
-            <Grid Style="{StaticResource Petal}" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <Ellipse Style="{StaticResource PetalShape}"/>
-                <TextBlock x:Name="DeviceText" Style="{StaticResource PetalText}" Text="DISPLAY1"/>
-            </Grid>
-
-            <!-- Centre: the monitor number -->
-            <Ellipse Width="96" Height="96" Fill="#1C2A30" Stroke="#7FD3DC" StrokeThickness="2"
-                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            <TextBlock x:Name="MonitorText" Text="1" Foreground="White" FontSize="44" FontWeight="Bold"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-        </Grid>
-
-        <TextBlock x:Name="TitleText" Text="Monitor 1"
-                   Foreground="White" FontSize="18" Margin="0,24,0,0" HorizontalAlignment="Center"/>
-        <TextBlock Text="Press Esc or click anywhere to close"
-                   Foreground="#99FFFFFF" FontSize="13" Margin="0,6,0,0" HorizontalAlignment="Center"/>
-    </StackPanel>
 </Window>
