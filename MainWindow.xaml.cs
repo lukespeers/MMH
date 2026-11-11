@@ -60,8 +60,119 @@ namespace MMH
             // Load any previously saved profiles (may adjust display count)
             LoadProfiles();
 
+            foreach (var tb in new[] { Profile1_Description, Profile2_Description, Profile3_Description })
+                tb.TextChanged += (_, _) => UpdateCards();
+            UpdateCards();
+
+            SourceInitialized += (_, _) => UseDarkTitleBar();
+
             // Save on close
             this.Closing += MainWindow_Closing;
+        }
+
+        // --- Compact card UI ---
+
+        private bool _editMode;
+
+        private static readonly SolidColorBrush MiniOnBrush = Frozen("#2F8F9D");
+        private static readonly SolidColorBrush MiniPrimaryBrush = Frozen("#7FD3DC");
+        private static readonly SolidColorBrush MiniOffBrush = Frozen("#3A4F56");
+        private static readonly SolidColorBrush ActiveBorderBrush = Frozen("#2F8F9D");
+        private static readonly SolidColorBrush IdleBorderBrush = Frozen("#2A3D44");
+
+        private static SolidColorBrush Frozen(string hex)
+        {
+            var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+            b.Freeze();
+            return b;
+        }
+
+        private TextBox GetDescriptionBox(int n) => n switch { 1 => Profile1_Description, 2 => Profile2_Description, _ => Profile3_Description };
+
+        // Refreshes each card's title, mini display icons and Active highlight from the editors.
+        private void UpdateCards()
+        {
+            int? active = _orientationStore?.LastProfile;
+            for (int n = 1; n <= 3; n++)
+            {
+                var (title, mini, pill, card) = n switch
+                {
+                    1 => (Profile1_Title, Profile1_Mini, Profile1_Active, Profile1_Card),
+                    2 => (Profile2_Title, Profile2_Mini, Profile2_Active, Profile2_Card),
+                    _ => (Profile3_Title, Profile3_Mini, Profile3_Active, Profile3_Card),
+                };
+
+                string desc = GetDescriptionBox(n).Text.Trim();
+                title.Text = desc.Length > 0 ? desc : $"Profile {n}";
+
+                var enabled = GetDisplaysPanel(n)!.Children.OfType<CheckBox>()
+                    .OrderBy(cb => (int)cb.Tag).Select(cb => cb.IsChecked == true).ToArray();
+                int primary = GetProfilePrimaryIndex(n);
+                if (primary < 0 || primary >= enabled.Length || !enabled[primary])
+                    primary = Array.FindIndex(enabled, v => v); // same fallback the Apply script uses
+
+                mini.Children.Clear();
+                if (!enabled.Any(v => v))
+                {
+                    mini.Children.Add(new TextBlock { Text = "Not set up", FontSize = 11, Foreground = MiniOffBrush });
+                }
+                for (int i = 0; i < enabled.Length && enabled.Any(v => v); i++)
+                {
+                    bool on = enabled[i], isPrimary = i == primary;
+                    mini.Children.Add(new Border
+                    {
+                        Width = 22,
+                        Height = 14,
+                        CornerRadius = new CornerRadius(3),
+                        Margin = new Thickness(0, 0, 4, 0),
+                        Background = on ? (isPrimary ? MiniPrimaryBrush : MiniOnBrush) : Brushes.Transparent,
+                        BorderBrush = on ? MiniPrimaryBrush : MiniOffBrush,
+                        BorderThickness = new Thickness(1),
+                        ToolTip = $"Display {i + 1}: " + (on ? (isPrimary ? "on, primary" : "on") : "off"),
+                        Child = new TextBlock
+                        {
+                            Text = (i + 1).ToString(),
+                            FontSize = 9,
+                            FontWeight = FontWeights.SemiBold,
+                            Foreground = on ? (isPrimary ? Brushes.Black : Brushes.White) : MiniOffBrush,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                        }
+                    });
+                }
+
+                bool isActive = active == n;
+                pill.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
+                card.BorderBrush = isActive ? ActiveBorderBrush : IdleBorderBrush;
+            }
+        }
+
+        private void EditToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _editMode = !_editMode;
+            var vis = _editMode ? Visibility.Visible : Visibility.Collapsed;
+            Profile1_Editor.Visibility = Profile2_Editor.Visibility = Profile3_Editor.Visibility = vis;
+            EditFooter.Visibility = vis;
+            EditButton.Content = _editMode ? "" : ""; // check mark / pencil
+            EditButton.ToolTip = _editMode ? "Done editing" : "Edit profiles";
+            HintText.Text = _editMode ? "Pick displays and the primary, then click the check mark" : "Click a profile to apply it";
+
+            if (!_editMode) SaveProfiles();
+        }
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+        // Dark title bar to match the window (Windows 10 20H1+ / 11; ignored elsewhere).
+        private void UseDarkTitleBar()
+        {
+            try
+            {
+                var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                int on = 1;
+                DwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, ref on, sizeof(int));
+            }
+            catch { /* cosmetic only */ }
         }
 
         // --- UI generation for dynamic number of displays ---
@@ -84,8 +195,10 @@ namespace MMH
                     {
                         Content = $"{i + 1}",
                         Tag = i,
-                        Margin = new Thickness(2)
+                        ToolTip = $"Turn display {i + 1} on"
                     };
+                    cb.Checked += (_, _) => UpdateCards();
+                    cb.Unchecked += (_, _) => UpdateCards();
                     displaysPanel.Children.Add(cb);
 
                     var rb = new RadioButton
@@ -93,8 +206,10 @@ namespace MMH
                         Content = (i + 1).ToString(),
                         GroupName = $"Profile{profileNumber}Primary",
                         Tag = i,
-                        Margin = new Thickness(2)
+                        ToolTip = $"Make display {i + 1} primary"
                     };
+                    rb.Checked += (_, _) => UpdateCards();
+                    rb.Unchecked += (_, _) => UpdateCards();
                     primaryPanel.Children.Add(rb);
                 }
             }
@@ -130,6 +245,7 @@ namespace MMH
             if (int.TryParse(DisplayCountTextBox.Text.Trim(), out int requested) && requested > 0)
             {
                 GenerateConfigurator(requested);
+                UpdateCards();
             }
             else
             {
@@ -268,6 +384,7 @@ namespace MMH
 
             if (_orientationStore != null)
                 _orientationStore.LastProfile = profileNumber;
+            UpdateCards();
 
             // Once the displays have switched, check whether any monitor's orientation
             // differs from what the user last confirmed for this profile.

@@ -5,209 +5,327 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MMH"
         mc:Ignorable="d"
-        Title="MMH" Height="376" Width="672">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Orientation="Vertical" Margin="10">
-            <!-- Replaced the simple Label with a styled Border + TextBlock that has gradient background,
-     gradient text, drop shadow glow and a short entrance animation. Paste directly in place of the Label. -->
-            <Border HorizontalAlignment="Center"
-        CornerRadius="8"
-        Padding="12,8"
-        Margin="0,6,0,10"
-        SnapsToDevicePixels="True">
+        Title="MMH" Width="380" SizeToContent="Height" ResizeMode="CanMinimize"
+        Background="#12191C" FontFamily="Segoe UI" Foreground="#E6F4F6"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
 
-                <Border.Effect>
-                    <DropShadowEffect Color="#88000000" BlurRadius="10" ShadowDepth="3"/>
-                </Border.Effect>
+    <Window.Resources>
+        <!-- Same palette as the orientation / Identify overlays -->
+        <SolidColorBrush x:Key="CardBrush" Color="#1C2A30"/>
+        <SolidColorBrush x:Key="CardHoverBrush" Color="#22363D"/>
+        <SolidColorBrush x:Key="PetalBrush" Color="#2F8F9D"/>
+        <SolidColorBrush x:Key="PetalHoverBrush" Color="#3FB4C3"/>
+        <SolidColorBrush x:Key="PetalStrokeBrush" Color="#7FD3DC"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#8FB3B9"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#2A3D44"/>
 
-                <Grid>
-                    <TextBlock Text="MMH (Multi Monitor Helper)"
-                   FontFamily="Segoe UI Semibold"
-                   FontSize="18"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   TextOptions.TextFormattingMode="Ideal"
-                   TextOptions.TextRenderingMode="ClearType"
-                   RenderTransformOrigin="0.5,0.5"
-                   Opacity="0.98">
-                        <TextBlock.Foreground>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#FFFFFFFF" Offset="0.0"/>
-                                <GradientStop Color="#FFE6F7FF" Offset="1.0"/>
-                            </LinearGradientBrush>
-                        </TextBlock.Foreground>
+        <!-- Small round toolbar button with a Segoe icon glyph -->
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="17"
+                                BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource PetalBrush}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PetalStrokeBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#257682"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <!-- subtle glow (named so we can animate opacity) -->
-                        <TextBlock.Effect>
-                            <DropShadowEffect x:Name="titleGlow"
-                                  Color="#FFFFFFFF"
-                                  BlurRadius="12"
-                                  ShadowDepth="0"
-                                  Opacity="0.0"/>
-                        </TextBlock.Effect>
+        <!-- The clickable top row of a profile card -->
+        <Style x:Key="CardButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="ToolTip" Value="Click to apply this profile"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="10" Padding="10,9">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource CardHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#263F47"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                        <TextBlock.RenderTransform>
-                            <ScaleTransform x:Name="titleScale" ScaleX="1" ScaleY="1"/>
-                        </TextBlock.RenderTransform>
-                    </TextBlock>
+        <!-- The round numbered "petal" on each card; lights up while the card is hovered -->
+        <Style x:Key="PetalEllipse" TargetType="Ellipse">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Fill" Value="{StaticResource PetalBrush}"/>
+            <Setter Property="Stroke" Value="{StaticResource PetalStrokeBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                    <Setter Property="Fill" Value="{StaticResource PetalHoverBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
-                    <Grid.Triggers>
-                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <!-- pop / settle -->
-                                    <DoubleAnimation Storyboard.TargetName="titleScale"
-                                         Storyboard.TargetProperty="ScaleX"
-                                         From="0.94" To="1.0"
-                                         Duration="0:0:0.28"
-                                         AccelerationRatio="0.2" DecelerationRatio="0.8"/>
-                                    <DoubleAnimation Storyboard.TargetName="titleScale"
-                                         Storyboard.TargetProperty="ScaleY"
-                                         From="0.94" To="1.0"
-                                         Duration="0:0:0.28"
-                                         AccelerationRatio="0.2" DecelerationRatio="0.8"/>
-                                    <!-- glow fade-in -->
-                                    <DoubleAnimation Storyboard.TargetName="titleGlow"
-                                         Storyboard.TargetProperty="Opacity"
-                                         From="0.0" To="0.7"
-                                         Duration="0:0:0.35"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                    </Grid.Triggers>
-                </Grid>
-            </Border>
+        <Style x:Key="PetalNumber" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
 
-            <!-- Display count control -->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,4,0,10">
-                <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Displays:</TextBlock>
-                <TextBox x:Name="DisplayCountTextBox" Width="25" Text="3" Margin="0,0,8,0" />
-                <Button Content="Regenerate" Click="Regenerate_Click"/>
-                <Button Content="Identify Monitors"
-                    Width="150"
-                    Click="IdentifyMonitors_Click"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Top" Margin="10,0,0,0"
-                    />
-                    <Button Content="Restore All Displays"
-                            Width="160"
-                            Click="RestoreAll_Click"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Top" Margin="10,0,0,0"/>
-                    <Button Content="Check Orientation"
-                            Width="140"
-                            Click="CheckOrientation_Click"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Top" Margin="10,0,0,0"/>
+        <Style x:Key="ActivePill" TargetType="Border">
+            <Setter Property="Background" Value="#1F4A51"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PetalBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="Padding" Value="8,1"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>
 
+        <Style x:Key="EditorLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Width" Value="70"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Display checkboxes / primary radios drawn as small round chips -->
+        <Style x:Key="Chip" TargetType="ToggleButton">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" CornerRadius="14" Background="#12191C"
+                                BorderBrush="{StaticResource LineBrush}" BorderThickness="1.5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PetalStrokeBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource PetalBrush}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PetalStrokeBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource Chip}"/>
+        <Style TargetType="RadioButton" BasedOn="{StaticResource Chip}"/>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#12191C"/>
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="CaretBrush" Value="#E6F4F6"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="Padding" Value="4,3"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="TextButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{StaticResource CardBrush}" CornerRadius="12" Padding="12,4"
+                                BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource PetalBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="11"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="EditorPanel" TargetType="StackPanel">
+            <Setter Property="Margin" Value="14,0,14,12"/>
+            <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="14,12,14,10">
+        <!-- Header: title + tool icons -->
+        <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="MMH" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock Text="Multi Monitor Helper" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
             </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Style="{StaticResource IconButton}" Content="&#xE7F4;" ToolTip="Identify Monitors" Click="IdentifyMonitors_Click"/>
+                <Button Style="{StaticResource IconButton}" Content="&#xE7AD;" ToolTip="Check Orientation" Click="CheckOrientation_Click"/>
+                <Button Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="Restore All Displays (turn every display on)" Click="RestoreAll_Click"/>
+                <Button x:Name="EditButton" Style="{StaticResource IconButton}" Content="&#xE70F;" ToolTip="Edit profiles" Click="EditToggle_Click"/>
+            </StackPanel>
+        </Grid>
 
-            <!-- Changed from a horizontal StackPanel to a 3-column Grid so GroupBoxes stretch equally -->
-            <Grid Margin="0,10,0,10" HorizontalAlignment="Stretch" >
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <!-- Profile 1 -->
-                <GroupBox Grid.Column="0" Margin="0,0,0,0" BorderBrush="#FFBBDDF0" Background="#FFF6FBFD" HorizontalAlignment="Stretch">
-                    <GroupBox.Header>
-                        <Border Background="#FFDCEFF6" Padding="6">
-                            <TextBlock Text="Profile 1" FontWeight="Bold"/>
+        <!-- Profile 1 -->
+        <Border x:Name="Profile1_Card" Style="{StaticResource Card}">
+            <StackPanel>
+                <Button Style="{StaticResource CardButton}" Click="ApplyProfile1_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <Ellipse Style="{StaticResource PetalEllipse}"/>
+                            <TextBlock Style="{StaticResource PetalNumber}" Text="1"/>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="Profile1_Title" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel x:Name="Profile1_Mini" Orientation="Horizontal" Margin="0,5,0,0"/>
+                        </StackPanel>
+                        <Border x:Name="Profile1_Active" Grid.Column="2" Style="{StaticResource ActivePill}">
+                            <TextBlock Text="Active" FontSize="11" Foreground="{StaticResource PetalStrokeBrush}"/>
                         </Border>
-                    </GroupBox.Header>
-
-                    <StackPanel Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
-                            <WrapPanel Orientation="Horizontal" x:Name="Profile1_DisplaysPanel"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
-                            <WrapPanel Orientation="Horizontal" x:Name="Profile1_PrimaryPanel"/>
-                        </StackPanel>
-
-                        <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
-                        <TextBox x:Name="Profile1_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
-
-                        <Button Content="Apply" Click="ApplyProfile1_Click" Margin="0,6,0,0" />
+                    </Grid>
+                </Button>
+                <StackPanel x:Name="Profile1_Editor" Style="{StaticResource EditorPanel}">
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
+                        <TextBlock Style="{StaticResource EditorLabel}" Text="Displays on"/>
+                        <WrapPanel x:Name="Profile1_DisplaysPanel"/>
                     </StackPanel>
-                </GroupBox>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Style="{StaticResource EditorLabel}" Text="Primary"/>
+                        <WrapPanel x:Name="Profile1_PrimaryPanel"/>
+                    </StackPanel>
+                    <TextBox x:Name="Profile1_Description" ToolTip="Name / description"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
-                <!-- Profile 2 -->
-                <GroupBox Grid.Column="1" Margin="0,0,0,0" BorderBrush="#FFBEE7C8" Background="#FFFBFEF6" HorizontalAlignment="Stretch">
-                    <GroupBox.Header>
-                        <Border Background="#FFE8F7D9" Padding="6">
-                            <TextBlock Text="Profile 2" FontWeight="Bold"/>
+        <!-- Profile 2 -->
+        <Border x:Name="Profile2_Card" Style="{StaticResource Card}">
+            <StackPanel>
+                <Button Style="{StaticResource CardButton}" Click="ApplyProfile2_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <Ellipse Style="{StaticResource PetalEllipse}"/>
+                            <TextBlock Style="{StaticResource PetalNumber}" Text="2"/>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="Profile2_Title" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel x:Name="Profile2_Mini" Orientation="Horizontal" Margin="0,5,0,0"/>
+                        </StackPanel>
+                        <Border x:Name="Profile2_Active" Grid.Column="2" Style="{StaticResource ActivePill}">
+                            <TextBlock Text="Active" FontSize="11" Foreground="{StaticResource PetalStrokeBrush}"/>
                         </Border>
-                    </GroupBox.Header>
-
-                    <StackPanel Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
-                            <WrapPanel Orientation="Horizontal" x:Name="Profile2_DisplaysPanel"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
-                            <WrapPanel Orientation="Horizontal" x:Name="Profile2_PrimaryPanel"/>
-                        </StackPanel>
-
-                        <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
-                        <TextBox x:Name="Profile2_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
-
-                        <Button Content="Apply" Click="ApplyProfile2_Click" Margin="0,6,0,0" />
+                    </Grid>
+                </Button>
+                <StackPanel x:Name="Profile2_Editor" Style="{StaticResource EditorPanel}">
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
+                        <TextBlock Style="{StaticResource EditorLabel}" Text="Displays on"/>
+                        <WrapPanel x:Name="Profile2_DisplaysPanel"/>
                     </StackPanel>
-                </GroupBox>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Style="{StaticResource EditorLabel}" Text="Primary"/>
+                        <WrapPanel x:Name="Profile2_PrimaryPanel"/>
+                    </StackPanel>
+                    <TextBox x:Name="Profile2_Description" ToolTip="Name / description"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
-                <!-- Profile 3 -->
-                <GroupBox Grid.Column="2" Margin="0,0,0,0" BorderBrush="#FFF0D1C4" Background="#FFFEFBF9" HorizontalAlignment="Stretch">
-                    <GroupBox.Header>
-                        <Border Background="#FFF7DBD0" Padding="6">
-                            <TextBlock Text="Profile 3" FontWeight="Bold"/>
+        <!-- Profile 3 -->
+        <Border x:Name="Profile3_Card" Style="{StaticResource Card}">
+            <StackPanel>
+                <Button Style="{StaticResource CardButton}" Click="ApplyProfile3_Click">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <Ellipse Style="{StaticResource PetalEllipse}"/>
+                            <TextBlock Style="{StaticResource PetalNumber}" Text="3"/>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="Profile3_Title" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel x:Name="Profile3_Mini" Orientation="Horizontal" Margin="0,5,0,0"/>
+                        </StackPanel>
+                        <Border x:Name="Profile3_Active" Grid.Column="2" Style="{StaticResource ActivePill}">
+                            <TextBlock Text="Active" FontSize="11" Foreground="{StaticResource PetalStrokeBrush}"/>
                         </Border>
-                    </GroupBox.Header>
-
-                    <StackPanel Margin="4">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Enable Displays</TextBlock>
-                            <WrapPanel Orientation="Horizontal" x:Name="Profile3_DisplaysPanel"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,4">
-                            <TextBlock VerticalAlignment="Center" Margin="0,0,6,0">Default Monitor</TextBlock>
-                            <WrapPanel Orientation="Horizontal" x:Name="Profile3_PrimaryPanel"/>
-                        </StackPanel>
-
-                        <TextBlock Text="Description:" Margin="2,4,2,0" FontSize="10"/>
-                        <TextBox x:Name="Profile3_Description" Height="50" TextWrapping="Wrap" AcceptsReturn="True" Margin="2"/>
-
-                        <Button Content="Apply" Click="ApplyProfile3_Click" Margin="0,6,0,0" />
+                    </Grid>
+                </Button>
+                <StackPanel x:Name="Profile3_Editor" Style="{StaticResource EditorPanel}">
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
+                        <TextBlock Style="{StaticResource EditorLabel}" Text="Displays on"/>
+                        <WrapPanel x:Name="Profile3_DisplaysPanel"/>
                     </StackPanel>
-                </GroupBox>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Style="{StaticResource EditorLabel}" Text="Primary"/>
+                        <WrapPanel x:Name="Profile3_PrimaryPanel"/>
+                    </StackPanel>
+                    <TextBox x:Name="Profile3_Description" ToolTip="Name / description"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
-            </Grid>
-
-            <Grid Margin="2,4,13,0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <!--<TextBlock Grid.Row="0" Text="Script Preview:" FontSize="10"/>
-                <TextBox Grid.Row="1" x:Name="ScriptPreview" 
-                         IsReadOnly="True"
-                         TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto"
-                         HorizontalScrollBarVisibility="Auto"
-                         Height="110"
-                         FontFamily="Consolas"
-                         FontSize="12"/>-->
-
-            </Grid>
-
-
+        <!-- Edit mode only: how many display slots each profile has -->
+        <StackPanel x:Name="EditFooter" Orientation="Horizontal" Margin="2,0,0,6" Visibility="Collapsed">
+            <TextBlock Text="Display slots" Foreground="{StaticResource MutedBrush}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox x:Name="DisplayCountTextBox" Width="34" Text="3" HorizontalContentAlignment="Center" Margin="0,0,8,0"/>
+            <Button Style="{StaticResource TextButton}" Content="Regenerate" FontSize="11" Click="Regenerate_Click"/>
         </StackPanel>
-    </ScrollViewer>
+
+        <TextBlock x:Name="HintText" Text="Click a profile to apply it" FontSize="11"
+                   Foreground="#6F9298" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+    </StackPanel>
 </Window>
