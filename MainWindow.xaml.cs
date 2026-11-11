@@ -140,9 +140,36 @@ namespace MMH
         // Helper: build script lines based on enabled array (index 0 -> display 1)
         // Now honors a requested primaryIndex (0-based). If the requested primary is not enabled,
         // falls back to the first enabled display (previous behavior).
-        private string BuildAlterDisplaysScript(bool[] enabled, int primaryIndex)
+        //
+        // Every step first checks the display is actually connected, so the same profiles work
+        // with 2 or 3 monitors plugged in:
+        //  - wanted off but not connected: skipped (it's already off), not an error
+        //  - wanted on/primary but not connected: skipped and recorded in $missing; the script
+        //    writes them to missingFile and exits 2 (see WrapWithDiagnostics) so the app can tell the user
+        // The result must be wrapped with perLine: false.
+        private string BuildAlterDisplaysScript(bool[] enabled, int primaryIndex, string missingFile)
         {
             var sb = new StringBuilder();
+
+            static string Q(string s) => s.Replace("'", "''");
+
+            sb.AppendLine("$connected = @(Get-DisplayInfo | ForEach-Object { [int]$_.DisplayId })");
+            sb.AppendLine("Write-Host \"Connected displays: $($connected -join ', ')\"");
+            sb.AppendLine("$missing = @()");
+            sb.AppendLine("function Invoke-Step([string]$desc, [scriptblock]$step) {");
+            sb.AppendLine("    Write-Host \"Running: $desc\"");
+            sb.AppendLine("    try { & $step } catch { Write-Warning \"FAILED: $desc - $($_.Exception.Message)\"; $script:failed = $true }");
+            sb.AppendLine("}");
+
+            void Enable(int n) => sb.AppendLine(
+                $"if ($connected -contains {n}) {{ Invoke-Step 'Enable-Display {n}' {{ Enable-Display {n} -ErrorAction Stop }} }} " +
+                $"else {{ Write-Warning 'Display {n} is not connected - wanted on, skipped'; if ($missing -notcontains {n}) {{ $missing += {n} }} }}");
+            void Disable(int n) => sb.AppendLine(
+                $"if ($connected -contains {n}) {{ Invoke-Step 'Disable-Display {n}' {{ Disable-Display {n} -ErrorAction Stop }} }} " +
+                $"else {{ Write-Host 'Display {n} is not connected - already off, skipped' }}");
+            void Primary(int n) => sb.AppendLine(
+                $"if ($connected -contains {n}) {{ Invoke-Step 'Set-DisplayPrimary {n}' {{ Set-DisplayPrimary {n} -ErrorAction Stop }} }} " +
+                $"else {{ Write-Warning 'Display {n} is not connected - cannot make it primary'; if ($missing -notcontains {n}) {{ $missing += {n} }} }}");
 
             // Determine which display should be set primary when enabling
             int firstEnabled = Array.FindIndex(enabled, v => v);
@@ -161,8 +188,7 @@ namespace MMH
             {
                 if (enabled[i])
                 {
-                    int displayNumber = i + 1;
-                    sb.AppendLine($"Enable-Display {displayNumber}");
+                    Enable(i + 1);
                 }
             }
 
@@ -172,7 +198,7 @@ namespace MMH
             bool primarySetEarly = false;
             if (numOfEnabledMonitors == 1 && primaryToSet >= 0)
             {
-                sb.AppendLine($"Set-DisplayPrimary {primaryToSet + 1}");
+                Primary(primaryToSet + 1);
                 primarySetEarly = true;
             }
 
@@ -181,8 +207,7 @@ namespace MMH
             {
                 if (!enabled[i])
                 {
-                    int displayNumber = i + 1;
-                    sb.AppendLine($"Disable-Display {displayNumber}");
+                    Disable(i + 1);
                 }
             }
 
@@ -190,8 +215,11 @@ namespace MMH
             // but only if we didn't already set it earlier.
             if (!primarySetEarly && primaryToSet >= 0)
             {
-                sb.AppendLine($"Set-DisplayPrimary {primaryToSet + 1}");
+                Primary(primaryToSet + 1);
             }
+
+            // Hand the missing displays back to the app (it can't read this elevated process's output).
+            sb.AppendLine($"Set-Content -Path '{Q(missingFile)}' -Value ($missing -join ',') -Encoding UTF8");
 
             return sb.ToString();
         }
@@ -226,7 +254,10 @@ namespace MMH
 
             int primaryIdx = GetProfilePrimaryIndex(profileNumber);
 
-            string script = WrapWithDiagnostics(BuildAlterDisplaysScript(enabled, primaryIdx));
+            string missingFile = Path.Combine(ScriptsFolder, "missing-displays.txt");
+            try { File.Delete(missingFile); } catch { /* stale file only matters if exit code is 2 */ }
+
+            string script = WrapWithDiagnostics(BuildAlterDisplaysScript(enabled, primaryIdx, missingFile), perLine: false);
 
             AppendLog($"--- Apply Profile {profileNumber} --- enabled=[{string.Join(",", enabled)}] primary={primaryIdx + 1}");
             AppendLog("Generated script:" + Environment.NewLine + script);
@@ -240,11 +271,27 @@ namespace MMH
 
             // Once the displays have switched, check whether any monitor's orientation
             // differs from what the user last confirmed for this profile.
-            RunScript(AlterDisplaysPath, onExit: _ => Dispatcher.InvokeAsync(async () =>
+            RunScript(AlterDisplaysPath, onExit: exitCode => Dispatcher.InvokeAsync(async () =>
             {
                 await Task.Delay(1500); // let Windows finish re-laying out the displays
                 CheckOrientation(profileNumber, force: false);
+
+                if (exitCode == 2)
+                    ShowMissingDisplaysNotice(profileNumber, missingFile);
             }));
+        }
+
+        // Exit code 2: the profile wanted displays on (or primary) that aren't connected right now.
+        private void ShowMissingDisplaysNotice(int profileNumber, string missingFile)
+        {
+            string ids = "";
+            try { ids = File.ReadAllText(missingFile).Trim(); } catch { }
+            string list = string.IsNullOrEmpty(ids) ? "some displays" : $"display {ids.Replace(",", ", ")}";
+
+            AppendLog($"Profile {profileNumber}: wanted {list} but not connected; the rest was applied.");
+            MessageBox.Show(this,
+                $"Profile {profileNumber} wants {list} turned on, but it isn't connected right now.\n\nEverything else in the profile was applied.",
+                "MMH - Display not connected", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // Manual check: confirmations are saved under the profile applied most recently.
@@ -504,6 +551,8 @@ foreach ($n in 1..$count) {
             sb.AppendLine("Write-Host '--- Displays AFTER ---'");
             sb.AppendLine("Get-DisplayInfo | Format-Table -AutoSize | Out-String -Width 200 | Write-Host");
             sb.AppendLine("if ($failed) { exit 1 }");
+            // Profile scripts set $missing for displays they wanted on but weren't connected.
+            sb.AppendLine("if ($missing -and $missing.Count -gt 0) { exit 2 }");
 
             return sb.ToString();
         }
