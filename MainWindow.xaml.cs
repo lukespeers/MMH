@@ -275,6 +275,34 @@ namespace MMH
             }
         }
 
+        private void RestoreAll_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Enable every display Windows knows about. The primary display is left as-is.
+                // Multi-line block, so it's wrapped as a whole rather than line by line.
+                string body = @"
+$count = (Get-DisplayInfo | Measure-Object).Count
+foreach ($n in 1..$count) {
+    try { Enable-Display $n -ErrorAction Stop }
+    catch { Write-Warning ""FAILED: Enable-Display $n - $($_.Exception.Message)""; $failed = $true }
+}
+";
+
+                string script = WrapWithDiagnostics(body, perLine: false);
+                AppendLog("--- Restore All Displays requested ---");
+
+                if (!WriteScript(AlterDisplaysPath, script))
+                    return;
+
+                RunScript(AlterDisplaysPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred: {ex.Message}");
+            }
+        }
+
 
         private async Task<List<string>> GetMonitorIdsAsync()
         {
@@ -297,7 +325,12 @@ namespace MMH
             return ids;
         }
 
-        private string WrapWithDiagnostics(string body)
+        /// <param name="perLine">
+        /// true: wrap each line in its own try/catch (for simple one-line commands).
+        /// false: insert the body as-is, for multi-line PowerShell blocks that handle their own errors
+        /// (per-line wrapping would append -ErrorAction to lines ending in '}' and break parsing).
+        /// </param>
+        private string WrapWithDiagnostics(string body, bool perLine = true)
         {
             var sb = new StringBuilder();
 
@@ -307,7 +340,11 @@ namespace MMH
             // If Get-DisplayInfo isn't found in your module version, use Get-DisplayConfig instead
             sb.AppendLine("Get-DisplayInfo | Format-Table -AutoSize | Out-String -Width 200 | Write-Host");
 
-            foreach (var line in body.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            if (!perLine)
+            {
+                sb.AppendLine(body.Trim());
+            }
+            else foreach (var line in body.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 sb.AppendLine($"Write-Host 'Running: {line}'");
                 sb.AppendLine(
