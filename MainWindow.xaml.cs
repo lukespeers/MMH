@@ -9,7 +9,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.ComponentModel;
 
 namespace MMH
@@ -41,12 +40,6 @@ namespace MMH
 
         private static readonly object LogLock = new object();
 
-        // Last orientation the user confirmed per monitor (orientation.json next to profiles.json)
-        private OrientationStore? _orientationStore;
-
-        // Monitors that currently have an orientation overlay open (by device name)
-        private readonly HashSet<string> _orientationPromptsOpen = new();
-
 
         public MainWindow()
         {
@@ -55,7 +48,6 @@ namespace MMH
             ScriptsFolder = System.IO.Path.Combine(ScriptDirectory, "scripts");
 
             ConfigFilePath = System.IO.Path.Combine(ScriptDirectory, "profiles.json");
-            _orientationStore = new OrientationStore(System.IO.Path.Combine(ScriptDirectory, "orientation.json"));
 
             // Load any previously saved profiles (may adjust display count)
             LoadProfiles();
@@ -235,111 +227,7 @@ namespace MMH
             if (!WriteScript(AlterDisplaysPath, script))
                 return;
 
-            // Once the displays have switched, check whether any monitor's orientation
-            // looks different from what the user last confirmed.
-            RunScript(AlterDisplaysPath, onExit: _ => Dispatcher.InvokeAsync(async () =>
-            {
-                await Task.Delay(1500); // let Windows finish re-laying out the displays
-                CheckOrientation(force: false);
-            }));
-        }
-
-        private void CheckOrientation_Click(object sender, RoutedEventArgs e) => CheckOrientation(force: true);
-
-        /// <summary>
-        /// Opens one orientation overlay per monitor that needs it. With force=false only
-        /// monitors whose orientation/aspect differs from the last confirmed one (or that
-        /// have never been confirmed) are asked.
-        /// </summary>
-        private void CheckOrientation(bool force)
-        {
-            if (_orientationStore == null) return;
-
-            double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
-            foreach (var m in MonitorHelper.GetAllMonitors())
-            {
-                if (string.IsNullOrEmpty(m.DeviceName) || _orientationPromptsOpen.Contains(m.DeviceName))
-                    continue;
-
-                string? reason = force ? "manual check" : _orientationStore.GetChangeReason(m);
-                if (reason == null)
-                    continue;
-
-                AppendLog($"Orientation check: monitor {m.Index} ({m.DeviceName}, {m.Width}x{m.Height}, orientation {m.Orientation}) - {reason}");
-                PromptMonitorOrientation(m, scale);
-            }
-        }
-
-        private static Rect ToDip(Rect px, double scale) =>
-            new Rect(px.Left / scale, px.Top / scale, px.Width / scale, px.Height / scale);
-
-        private void PromptMonitorOrientation(MonitorHelper.MonitorInfo m, double scale)
-        {
-            _orientationPromptsOpen.Add(m.DeviceName);
-
-            var prompt = new OrientationPromptWindow(ToDip(m.Bounds, scale), m.Index);
-            prompt.Closed += async (_, _) =>
-            {
-                try
-                {
-                    int? turns = prompt.ChosenQuarterTurns;
-                    if (turns == null)
-                    {
-                        AppendLog($"Orientation check skipped for monitor {m.Index}.");
-                        return;
-                    }
-
-                    if (turns == 0)
-                    {
-                        AppendLog($"Monitor {m.Index} confirmed upright (orientation {m.Orientation}).");
-                        _orientationStore?.Confirm(m);
-                        return;
-                    }
-
-                    // The picked label is drawn rotated `turns` quarter-turns clockwise and reads
-                    // upright, so the picture is off by that much: counter it.
-                    int newOrientation = ((m.Orientation - turns.Value) % 4 + 4) % 4;
-                    AppendLog($"Monitor {m.Index}: rotating {m.Orientation} -> {newOrientation}");
-
-                    string? error = MonitorHelper.SetOrientation(m.DeviceName, newOrientation);
-                    if (error != null)
-                    {
-                        AppendLog($"ERROR rotating monitor {m.Index}: {error}");
-                        MessageBox.Show($"Could not rotate monitor {m.Index}: {error}", "MMH - Orientation",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-
-                    await Task.Delay(800);
-                    var updated = MonitorHelper.GetAllMonitors().FirstOrDefault(x => x.DeviceName == m.DeviceName);
-                    if (updated == null) return;
-
-                    var confirm = new OrientationConfirmWindow(ToDip(updated.Bounds, VisualTreeHelper.GetDpi(this).DpiScaleX));
-                    // Not ShowDialog: that would block the overlays on the other monitors.
-                    var closed = new TaskCompletionSource();
-                    confirm.Closed += (_, _) => closed.TrySetResult();
-                    confirm.Show();
-                    await closed.Task;
-
-                    if (confirm.Kept)
-                    {
-                        AppendLog($"Monitor {m.Index}: kept orientation {updated.Orientation}.");
-                        _orientationStore?.Confirm(updated);
-                    }
-                    else
-                    {
-                        AppendLog($"Monitor {m.Index}: reverting to orientation {m.Orientation}.");
-                        string? revertError = MonitorHelper.SetOrientation(m.DeviceName, m.Orientation);
-                        if (revertError != null)
-                            AppendLog($"ERROR reverting monitor {m.Index}: {revertError}");
-                    }
-                }
-                finally
-                {
-                    _orientationPromptsOpen.Remove(m.DeviceName);
-                }
-            };
-            prompt.Show();
+            RunScript(AlterDisplaysPath);
         }
 
         // XAML event handlers: one-liners that keep your existing Click="..." bindings working
@@ -374,34 +262,17 @@ namespace MMH
 
         private void IdentifyMonitors_Click(object sender, RoutedEventArgs e)
         {
-            if (_identifyBadges.Count > 0) return; // already showing
-
-            double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
-            foreach (var monitor in MonitorHelper.GetAllMonitors())
+            var monitors = MonitorHelper.GetAllMonitors();
+            foreach (var monitor in monitors)
             {
-                var badge = new MonitorBadgeWindow(monitor, ToDip(monitor.Bounds, scale));
-                badge.DismissRequested += (_, _) => CloseIdentifyBadges();
-                _identifyBadges.Add(badge);
+                var badge = new MonitorBadgeWindow(monitor.Index.ToString(), monitor.Bounds);
                 badge.Show();
+
+                _ = Task.Delay(3000).ContinueWith(_ =>
+                {
+                    badge.Dispatcher.Invoke(() => badge.Close());
+                });
             }
-
-            // Fallback so the overlays never linger if the user walks away.
-            // (Only closes this batch, not a later one opened after an early Esc.)
-            int session = ++_identifySession;
-            _ = Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => Dispatcher.Invoke(() =>
-            {
-                if (session == _identifySession) CloseIdentifyBadges();
-            }));
-        }
-
-        private readonly List<MonitorBadgeWindow> _identifyBadges = new();
-        private int _identifySession;
-
-        private void CloseIdentifyBadges()
-        {
-            var badges = _identifyBadges.ToList();
-            _identifyBadges.Clear();
-            foreach (var b in badges) b.Close();
         }
 
 
@@ -451,8 +322,7 @@ namespace MMH
             return sb.ToString();
         }
 
-        /// <param name="onExit">Called (on a background thread) with the exit code once the script finishes.</param>
-        private void RunScript(string psScriptName, Action<int>? onExit = null)
+        private void RunScript(string psScriptName)
         {
             try
             {
@@ -486,15 +356,12 @@ namespace MMH
                 {
                     _ = Task.Run(() =>
                     {
-                        int exitCode;
                         try
                         {
                             proc.WaitForExit();
-                            exitCode = proc.ExitCode;
-                            AppendLog($"{psScriptName} finished with exit code {exitCode}");
+                            AppendLog($"{psScriptName} finished with exit code {proc.ExitCode}");
                         }
                         finally { proc.Dispose(); }
-                        onExit?.Invoke(exitCode);
                     });
                 }
             }

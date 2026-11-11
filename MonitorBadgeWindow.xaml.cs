@@ -1,42 +1,34 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace MMH
 {
     /// <summary>
-    /// Full-screen "Identify Monitors" overlay for one monitor, styled like the
-    /// orientation clover. Esc or a click raises DismissRequested so all monitors close together.
+    /// Interaction logic for MonitorBadgeWindow.xaml
     /// </summary>
     public partial class MonitorBadgeWindow : Window
     {
-        public event EventHandler? DismissRequested;
+        public MonitorBadgeWindow(string text, Rect bounds)
 
-        public MonitorBadgeWindow(MonitorHelper.MonitorInfo monitor, Rect boundsDip)
         {
             InitializeComponent();
+            MonitorText.Text = text;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = bounds.Left + (bounds.Width - Width) / 2;
+            Top = bounds.Top + (bounds.Height - Height) / 2;
 
-            MonitorText.Text = monitor.Index.ToString();
-            TitleText.Text = $"Monitor {monitor.Index}";
-            ResolutionText.Text = $"{monitor.Width} × {monitor.Height}";
-            OrientationText.Text = monitor.Orientation switch
-            {
-                1 => "Portrait",
-                2 => "Landscape (flipped)",
-                3 => "Portrait (flipped)",
-                _ => "Landscape",
-            };
-            PrimaryText.Text = monitor.IsPrimary ? "Primary" : "Secondary";
-            DeviceText.Text = monitor.DeviceName.Replace(@"\\.\", "");
-
-            Left = boundsDip.Left;
-            Top = boundsDip.Top;
-            Width = boundsDip.Width;
-            Height = boundsDip.Height;
-
-            KeyDown += (_, e) => { if (e.Key == Key.Escape) DismissRequested?.Invoke(this, EventArgs.Empty); };
-            MouseLeftButtonDown += (_, _) => DismissRequested?.Invoke(this, EventArgs.Empty);
-            Loaded += (_, _) => Activate();
         }
     }
 }
