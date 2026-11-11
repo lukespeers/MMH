@@ -235,25 +235,30 @@ namespace MMH
             if (!WriteScript(AlterDisplaysPath, script))
                 return;
 
+            if (_orientationStore != null)
+                _orientationStore.LastProfile = profileNumber;
+
             // Once the displays have switched, check whether any monitor's orientation
-            // looks different from what the user last confirmed.
+            // differs from what the user last confirmed for this profile.
             RunScript(AlterDisplaysPath, onExit: _ => Dispatcher.InvokeAsync(async () =>
             {
                 await Task.Delay(1500); // let Windows finish re-laying out the displays
-                CheckOrientation(force: false);
+                CheckOrientation(profileNumber, force: false);
             }));
         }
 
-        private void CheckOrientation_Click(object sender, RoutedEventArgs e) => CheckOrientation(force: true);
+        // Manual check: confirmations are saved under the profile applied most recently.
+        private void CheckOrientation_Click(object sender, RoutedEventArgs e) =>
+            CheckOrientation(_orientationStore?.LastProfile, force: true);
 
         /// <summary>
         /// Opens one orientation overlay per monitor that needs it. With force=false only
-        /// monitors whose orientation/aspect differs from the last confirmed one (or that
-        /// have never been confirmed) are asked.
+        /// monitors whose orientation/aspect differs from what was last confirmed for
+        /// <paramref name="profile"/> (or that were never confirmed for it) are asked.
         /// </summary>
-        private void CheckOrientation(bool force)
+        private void CheckOrientation(int? profile, bool force)
         {
-            if (_orientationStore == null) return;
+            if (_orientationStore == null || (!force && profile == null)) return;
 
             double scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
             foreach (var m in MonitorHelper.GetAllMonitors())
@@ -261,19 +266,34 @@ namespace MMH
                 if (string.IsNullOrEmpty(m.DeviceName) || _orientationPromptsOpen.Contains(m.DeviceName))
                     continue;
 
-                string? reason = force ? "manual check" : _orientationStore.GetChangeReason(m);
+                string desc = $"monitor {m.Index} ({m.DeviceName}, {m.Width}x{m.Height}, orientation {m.Orientation})";
+                string? reason = force ? "manual check" : _orientationStore.GetChangeReason(profile!.Value, m);
                 if (reason == null)
+                {
+                    AppendLog($"Orientation check: {desc} matches profile {profile} - no prompt");
                     continue;
+                }
 
-                AppendLog($"Orientation check: monitor {m.Index} ({m.DeviceName}, {m.Width}x{m.Height}, orientation {m.Orientation}) - {reason}");
-                PromptMonitorOrientation(m, scale);
+                AppendLog($"Orientation check: {desc} - {reason}");
+                PromptMonitorOrientation(m, scale, profile);
             }
+        }
+
+        // Saves a confirmed orientation under the profile, if one has been applied.
+        private void ConfirmOrientation(int? profile, MonitorHelper.MonitorInfo m)
+        {
+            if (profile == null)
+            {
+                AppendLog($"Monitor {m.Index}: no profile applied yet, orientation not saved.");
+                return;
+            }
+            _orientationStore?.Confirm(profile.Value, m);
         }
 
         private static Rect ToDip(Rect px, double scale) =>
             new Rect(px.Left / scale, px.Top / scale, px.Width / scale, px.Height / scale);
 
-        private void PromptMonitorOrientation(MonitorHelper.MonitorInfo m, double scale)
+        private void PromptMonitorOrientation(MonitorHelper.MonitorInfo m, double scale, int? profile)
         {
             _orientationPromptsOpen.Add(m.DeviceName);
 
@@ -291,8 +311,8 @@ namespace MMH
 
                     if (turns == 0)
                     {
-                        AppendLog($"Monitor {m.Index} confirmed upright (orientation {m.Orientation}).");
-                        _orientationStore?.Confirm(m);
+                        AppendLog($"Monitor {m.Index} confirmed upright (orientation {m.Orientation}) for profile {profile}.");
+                        ConfirmOrientation(profile, m);
                         return;
                     }
 
@@ -323,8 +343,8 @@ namespace MMH
 
                     if (confirm.Kept)
                     {
-                        AppendLog($"Monitor {m.Index}: kept orientation {updated.Orientation}.");
-                        _orientationStore?.Confirm(updated);
+                        AppendLog($"Monitor {m.Index}: kept orientation {updated.Orientation} for profile {profile}.");
+                        ConfirmOrientation(profile, updated);
                     }
                     else
                     {
