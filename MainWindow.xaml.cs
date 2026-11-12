@@ -66,6 +66,11 @@ namespace MMH
 
             SourceInitialized += (_, _) => UseDarkTitleBar();
 
+            // Mark the profile that matches the real display setup, and keep it current.
+            Loaded += async (_, _) => await RefreshLiveDisplaysAsync();
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+            Closed += (_, _) => Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+
             // Save on close
             this.Closing += MainWindow_Closing;
         }
@@ -79,6 +84,7 @@ namespace MMH
         private static readonly SolidColorBrush MiniOffBrush = Frozen("#3A4F56");
         private static readonly SolidColorBrush ActiveBorderBrush = Frozen("#2F8F9D");
         private static readonly SolidColorBrush IdleBorderBrush = Frozen("#2A3D44");
+        private static readonly SolidColorBrush PrimaryDiffersBrush = Frozen("#E8B86A");
 
         private static SolidColorBrush Frozen(string hex)
         {
@@ -89,10 +95,137 @@ namespace MMH
 
         private TextBox GetDescriptionBox(int n) => n switch { 1 => Profile1_Description, 2 => Profile2_Description, _ => Profile3_Description };
 
+        // --- Which profile matches the displays that are on right now ---
+
+        // DisplayId -> state, as DisplayConfig's Get-DisplayInfo reports it (same numbering the profiles use).
+        // null until the first read finishes.
+        private Dictionary<int, (bool Active, bool Primary)>? _liveDisplays;
+        private bool _liveReadFailed;
+        private int _liveReadSeq;
+        private int _displayChangeSeq;
+
+        // Reads the live display state (no admin needed) and refreshes the cards.
+        private async Task RefreshLiveDisplaysAsync()
+        {
+            int seq = ++_liveReadSeq;
+            var result = await Task.Run(ReadLiveDisplays);
+            if (seq != _liveReadSeq) return; // a newer read has started
+
+            _liveReadFailed = result == null;
+            _liveDisplays = result;
+            UpdateCards();
+            LogActiveProfileIfChanged();
+        }
+
+        private string? _lastLoggedActive;
+
+        // One log line whenever the detected active profile changes (including the first read).
+        private void LogActiveProfileIfChanged()
+        {
+            var (active, primaryDiffers) = DetermineActiveProfile();
+            string label = active is int a ? $"Profile {a}" + (primaryDiffers ? " (primary differs)" : "") : "none";
+            if (label == _lastLoggedActive) return;
+            _lastLoggedActive = label;
+
+            string live = _liveDisplays == null
+                ? "unknown (read failed, using last applied)"
+                : string.Join(", ", _liveDisplays.OrderBy(kv => kv.Key)
+                    .Select(kv => $"{kv.Key} {(kv.Value.Active ? "on" : "off")}{(kv.Value.Primary ? " (primary)" : "")}"));
+            AppendLog($"Active profile: {label} - live displays: {live}");
+        }
+
+        private Dictionary<int, (bool Active, bool Primary)>? ReadLiveDisplays()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo("powershell.exe",
+                    "-NoProfile -ExecutionPolicy Bypass -Command \"ConvertTo-Json -Compress -InputObject @(Get-DisplayInfo | Select-Object DisplayId,Active,Primary)\"")
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                using var p = Process.Start(psi)!;
+                string json = p.StandardOutput.ReadToEnd();
+                p.WaitForExit(10000);
+
+                var map = new Dictionary<int, (bool, bool)>();
+                using var doc = JsonDocument.Parse(json);
+                foreach (var d in doc.RootElement.EnumerateArray())
+                    map[d.GetProperty("DisplayId").GetInt32()] = (d.GetProperty("Active").GetBoolean(), d.GetProperty("Primary").GetBoolean());
+                return map;
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Reading live display state failed, falling back to last applied profile: {ex.Message}");
+                return null;
+            }
+        }
+
+        // Windows changed the display setup (Win+P, Settings, a monitor plugged in or out...).
+        // Wait for it to settle, then re-read.
+        private void OnDisplaySettingsChanged(object? sender, EventArgs e) => Dispatcher.InvokeAsync(async () =>
+        {
+            int seq = ++_displayChangeSeq;
+            await Task.Delay(1000);
+            if (seq == _displayChangeSeq) await RefreshLiveDisplaysAsync();
+        });
+
+        // Displays the profile wants on, and the primary it will actually set (same fallback as the Apply script).
+        private (bool[] Enabled, int Primary) GetProfileState(int n)
+        {
+            var enabled = GetDisplaysPanel(n)!.Children.OfType<CheckBox>()
+                .OrderBy(cb => (int)cb.Tag).Select(cb => cb.IsChecked == true).ToArray();
+            int primary = GetProfilePrimaryIndex(n);
+            if (primary < 0 || primary >= enabled.Length || !enabled[primary])
+                primary = Array.FindIndex(enabled, v => v);
+            return (enabled, primary);
+        }
+
+        private enum LiveMatch { None, DisplaysOnly, Exact }
+
+        // Exact: exactly the profile's displays are on and its primary is primary.
+        // DisplaysOnly: the right displays are on but a different one is primary (e.g. after Win+P "Extend").
+        // Displays that aren't connected count as off.
+        private LiveMatch MatchLive(int n, Dictionary<int, (bool Active, bool Primary)> live)
+        {
+            var (enabled, primary) = GetProfileState(n);
+            if (primary < 0) return LiveMatch.None; // profile not set up
+
+            int slots = Math.Max(enabled.Length, live.Count == 0 ? 0 : live.Keys.Max());
+            for (int i = 0; i < slots; i++)
+            {
+                bool want = i < enabled.Length && enabled[i];
+                bool isOn = live.TryGetValue(i + 1, out var s) && s.Active;
+                if (want != isOn) return LiveMatch.None;
+            }
+            return live.TryGetValue(primary + 1, out var p) && p.Primary ? LiveMatch.Exact : LiveMatch.DisplaysOnly;
+        }
+
+        // The active profile, and whether its primary display differs from the live one.
+        // Exact matches win over displays-only ones; among equals, the profile applied last wins.
+        private (int? Profile, bool PrimaryDiffers) DetermineActiveProfile()
+        {
+            int? last = _orientationStore?.LastProfile;
+            if (_liveDisplays == null)
+                return (_liveReadFailed ? last : null, false); // can't read the real state: best guess
+
+            var live = _liveDisplays;
+            foreach (var level in new[] { LiveMatch.Exact, LiveMatch.DisplaysOnly })
+            {
+                var matches = Enumerable.Range(1, 3).Where(n => MatchLive(n, live) == level).ToList();
+                if (matches.Count == 0) continue;
+                int pick = last is int l && matches.Contains(l) ? l : matches[0];
+                return (pick, level == LiveMatch.DisplaysOnly);
+            }
+            return (null, false);
+        }
+
         // Refreshes each card's title, mini display icons and Active highlight from the editors.
         private void UpdateCards()
         {
-            int? active = _orientationStore?.LastProfile;
+            var (active, primaryDiffers) = DetermineActiveProfile();
             for (int n = 1; n <= 3; n++)
             {
                 var (title, mini, pill, card) = n switch
@@ -105,11 +238,7 @@ namespace MMH
                 string desc = GetDescriptionBox(n).Text.Trim();
                 title.Text = desc.Length > 0 ? desc : $"Profile {n}";
 
-                var enabled = GetDisplaysPanel(n)!.Children.OfType<CheckBox>()
-                    .OrderBy(cb => (int)cb.Tag).Select(cb => cb.IsChecked == true).ToArray();
-                int primary = GetProfilePrimaryIndex(n);
-                if (primary < 0 || primary >= enabled.Length || !enabled[primary])
-                    primary = Array.FindIndex(enabled, v => v); // same fallback the Apply script uses
+                var (enabled, primary) = GetProfileState(n);
 
                 mini.Children.Clear();
                 if (!enabled.Any(v => v))
@@ -142,6 +271,18 @@ namespace MMH
                 }
 
                 bool isActive = active == n;
+                if (isActive && primaryDiffers && primary >= 0)
+                {
+                    mini.Children.Add(new TextBlock
+                    {
+                        Text = "Primary monitor differs",
+                        FontSize = 11,
+                        Foreground = PrimaryDiffersBrush,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(4, 0, 0, 0),
+                        ToolTip = $"These displays are on, but display {primary + 1} isn't primary. Click to apply the profile and fix it."
+                    });
+                }
                 pill.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
                 card.BorderBrush = isActive ? ActiveBorderBrush : IdleBorderBrush;
             }
@@ -391,6 +532,7 @@ namespace MMH
             RunScript(AlterDisplaysPath, onExit: exitCode => Dispatcher.InvokeAsync(async () =>
             {
                 await Task.Delay(1500); // let Windows finish re-laying out the displays
+                _ = RefreshLiveDisplaysAsync();
                 CheckOrientation(profileNumber, force: false);
 
                 if (exitCode == 2)
