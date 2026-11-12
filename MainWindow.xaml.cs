@@ -835,42 +835,79 @@ foreach ($n in 1..$count) {
                     $"catch {{ Write-Error $_; exit 1 }} " +
                     $"finally {{ Stop-Transcript | Out-Null }}";
 
-                var startInfo = new ProcessStartInfo("powershell.exe",
-                    $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"")
+                string args = $"-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"{command}\"";
+
+                // Switching displays uses the same Windows API as Settings > Display, which doesn't
+                // need admin. So run without elevation first: no UAC prompt and no window.
+                // If that fails (exit code 1), retry elevated as before, with its window hidden.
+                // The scripts are idempotent, so a retry after a partial run is safe.
+                var startInfo = new ProcessStartInfo("powershell.exe", args)
                 {
-                    UseShellExecute = true,   // required for "runas"
-                    Verb = "runas",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
                 };
 
-                AppendLog($"Launching {psScriptName} (elevated)");
+                AppendLog($"Launching {psScriptName} (not elevated, hidden)");
                 var proc = Process.Start(startInfo);
+                if (proc == null) return;
 
-                // Record the exit code once PowerShell finishes, without blocking the UI.
-                // (Written after the process exits so it doesn't collide with the transcript.)
-                if (proc != null)
+                // Wait for the exit code without blocking the UI.
+                // (Logged after the process exits so it doesn't collide with the transcript.)
+                _ = Task.Run(() =>
                 {
-                    _ = Task.Run(() =>
+                    int exitCode = WaitAndLog(proc, psScriptName);
+                    if (exitCode == 1)
                     {
-                        int exitCode;
-                        try
-                        {
-                            proc.WaitForExit();
-                            exitCode = proc.ExitCode;
-                            AppendLog($"{psScriptName} finished with exit code {exitCode}");
-                        }
-                        finally { proc.Dispose(); }
-                        onExit?.Invoke(exitCode);
-                    });
-                }
-            }
-            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-            {
-                AppendLog("UAC prompt was cancelled; script not run.");
+                        AppendLog($"{psScriptName} failed without elevation; retrying elevated");
+                        exitCode = RunElevated(args, psScriptName);
+                    }
+                    if (exitCode >= 0) onExit?.Invoke(exitCode);
+                });
             }
             catch (Exception ex)
             {
                 AppendLog($"ERROR launching script: {ex}");
                 MessageBox.Show($"An error occurred: {ex.Message}");
+            }
+        }
+
+        private int WaitAndLog(Process proc, string psScriptName)
+        {
+            try
+            {
+                proc.WaitForExit();
+                int exitCode = proc.ExitCode;
+                AppendLog($"{psScriptName} finished with exit code {exitCode}");
+                return exitCode;
+            }
+            finally { proc.Dispose(); }
+        }
+
+        // Runs the same command elevated (UAC prompt, hidden window) and waits for it.
+        // Returns -1 if it couldn't be started or the UAC prompt was cancelled.
+        private int RunElevated(string args, string psScriptName)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo("powershell.exe", args)
+                {
+                    UseShellExecute = true,   // required for "runas"
+                    Verb = "runas",
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                };
+                AppendLog($"Launching {psScriptName} (elevated, hidden)");
+                var proc = Process.Start(startInfo);
+                return proc == null ? -1 : WaitAndLog(proc, psScriptName);
+            }
+            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+            {
+                AppendLog("UAC prompt was cancelled; script not run.");
+                return -1;
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"ERROR launching elevated script: {ex}");
+                return -1;
             }
         }
 
