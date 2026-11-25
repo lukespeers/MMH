@@ -11,7 +11,7 @@
     <Border Background="#1C2A30" BorderBrush="#7FD3DC" BorderThickness="2" CornerRadius="16"
             Padding="32,24" HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel>
-            <TextBlock Text="Keep this orientation?" Foreground="White" FontSize="24" FontWeight="SemiBold"
+            <TextBlock x:Name="TitleText" Text="Keep this orientation?" Foreground="White" FontSize="24" FontWeight="SemiBold"
                        HorizontalAlignment="Center"/>
             <TextBlock x:Name="CountdownText" Text="Reverting in 15 seconds" Foreground="#CCFFFFFF" FontSize="15"
                        Margin="0,8,0,20" HorizontalAlignment="Center"/>

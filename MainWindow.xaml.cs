@@ -44,6 +44,9 @@ namespace MMH
         // Last orientation the user confirmed per monitor (orientation.json next to profiles.json)
         private OrientationStore? _orientationStore;
 
+        // Monitor layout (position + rotation) saved per profile (layouts.json next to profiles.json)
+        private LayoutStore? _layoutStore;
+
         // Monitors that currently have an orientation overlay open (by device name)
         private readonly HashSet<string> _orientationPromptsOpen = new();
 
@@ -56,6 +59,7 @@ namespace MMH
 
             ConfigFilePath = System.IO.Path.Combine(ScriptDirectory, "profiles.json");
             _orientationStore = new OrientationStore(System.IO.Path.Combine(ScriptDirectory, "orientation.json"));
+            _layoutStore = new LayoutStore(System.IO.Path.Combine(ScriptDirectory, "layouts.json"));
 
             // Load any previously saved profiles (may adjust display count)
             LoadProfiles();
@@ -79,11 +83,40 @@ namespace MMH
 
         private bool _editMode;
 
+        // Profile selected by clicking its card: Edit mode and the Layout editor work on it.
+        // Starts on the active profile once that's known.
+        private int? _selectedProfile;
+        private int SelectedProfile => _selectedProfile ?? 1;
+
+        private void Card_Select(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement { Tag: string tag } && int.TryParse(tag, out int n))
+                SelectProfile(n);
+        }
+
+        private void SelectProfile(int n)
+        {
+            _selectedProfile = n;
+            UpdateEditorVisibility();
+            UpdateCards();
+        }
+
+        private void UpdateEditorVisibility()
+        {
+            Profile1_Editor.Visibility = _editMode && SelectedProfile == 1 ? Visibility.Visible : Visibility.Collapsed;
+            Profile2_Editor.Visibility = _editMode && SelectedProfile == 2 ? Visibility.Visible : Visibility.Collapsed;
+            Profile3_Editor.Visibility = _editMode && SelectedProfile == 3 ? Visibility.Visible : Visibility.Collapsed;
+            HintText.Text = _editMode
+                ? $"Editing Profile {SelectedProfile}. Click another profile to edit it, or the check mark when done."
+                : "Click a profile to select it, then Apply";
+        }
+
         private static readonly SolidColorBrush MiniOnBrush = Frozen("#2F8F9D");
         private static readonly SolidColorBrush MiniPrimaryBrush = Frozen("#7FD3DC");
         private static readonly SolidColorBrush MiniOffBrush = Frozen("#3A4F56");
         private static readonly SolidColorBrush ActiveBorderBrush = Frozen("#2F8F9D");
         private static readonly SolidColorBrush IdleBorderBrush = Frozen("#2A3D44");
+        private static readonly SolidColorBrush SelectedBorderBrush = Frozen("#7FD3DC");
         private static readonly SolidColorBrush PrimaryDiffersBrush = Frozen("#E8B86A");
 
         private static SolidColorBrush Frozen(string hex)
@@ -113,6 +146,7 @@ namespace MMH
 
             _liveReadFailed = result == null;
             _liveDisplays = result;
+            _selectedProfile ??= DetermineActiveProfile().Profile ?? _orientationStore?.LastProfile ?? 1;
             UpdateCards();
             LogActiveProfileIfChanged();
         }
@@ -271,6 +305,7 @@ namespace MMH
                 }
 
                 bool isActive = active == n;
+                bool isSelected = SelectedProfile == n;
                 if (isActive && primaryDiffers && primary >= 0)
                 {
                     mini.Children.Add(new TextBlock
@@ -284,19 +319,18 @@ namespace MMH
                     });
                 }
                 pill.Visibility = isActive ? Visibility.Visible : Visibility.Collapsed;
-                card.BorderBrush = isActive ? ActiveBorderBrush : IdleBorderBrush;
+                card.BorderBrush = isSelected ? SelectedBorderBrush : isActive ? ActiveBorderBrush : IdleBorderBrush;
+                card.BorderThickness = new Thickness(isSelected ? 2 : 1);
             }
         }
 
         private void EditToggle_Click(object sender, RoutedEventArgs e)
         {
             _editMode = !_editMode;
-            var vis = _editMode ? Visibility.Visible : Visibility.Collapsed;
-            Profile1_Editor.Visibility = Profile2_Editor.Visibility = Profile3_Editor.Visibility = vis;
-            EditFooter.Visibility = vis;
+            EditFooter.Visibility = _editMode ? Visibility.Visible : Visibility.Collapsed;
             EditButton.Content = _editMode ? "" : ""; // check mark / pencil
-            EditButton.ToolTip = _editMode ? "Done editing" : "Edit profiles";
-            HintText.Text = _editMode ? "Pick displays and the primary, then click the check mark" : "Click a profile to apply it";
+            EditButton.ToolTip = _editMode ? "Done editing" : "Edit the selected profile";
+            UpdateEditorVisibility();
 
             if (!_editMode) SaveProfiles();
         }
@@ -525,13 +559,14 @@ namespace MMH
 
             if (_orientationStore != null)
                 _orientationStore.LastProfile = profileNumber;
-            UpdateCards();
+            SelectProfile(profileNumber);
 
             // Once the displays have switched, check whether any monitor's orientation
             // differs from what the user last confirmed for this profile.
             RunScript(AlterDisplaysPath, onExit: exitCode => Dispatcher.InvokeAsync(async () =>
             {
                 await Task.Delay(1500); // let Windows finish re-laying out the displays
+                await RestoreSavedLayoutAsync(profileNumber);
                 _ = RefreshLiveDisplaysAsync();
                 CheckOrientation(profileNumber, force: false);
 
@@ -551,6 +586,48 @@ namespace MMH
             MessageBox.Show(this,
                 $"Profile {profileNumber} wants {list} turned on, but it isn't connected right now.\n\nEverything else in the profile was applied.",
                 "MMH - Display not connected", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        /// <summary>
+        /// Puts the monitors back where the profile's saved layout says (position and rotation).
+        /// Monitors it places don't need the orientation prompt afterwards.
+        /// </summary>
+        private async Task RestoreSavedLayoutAsync(int profile)
+        {
+            var layout = _layoutStore?.Get(profile);
+            if (layout == null) return;
+
+            var targets = LayoutStore.Plan(layout, MonitorHelper.GetAllMonitors(), out string reason);
+            if (targets == null)
+            {
+                AppendLog($"Layout for profile {profile} not restored: {reason}");
+                return;
+            }
+
+            if (reason == "already matches")
+            {
+                AppendLog($"Layout for profile {profile} already matches - nothing to restore");
+            }
+            else
+            {
+                string? error = MonitorHelper.ApplyLayout(targets);
+                AppendLog(error == null
+                    ? $"Restored saved layout for profile {profile}: " + string.Join("; ", targets.Select(t => $"{t.DeviceName} at {t.X},{t.Y} orientation {t.Orientation}"))
+                    : $"Restoring layout for profile {profile} failed: {error}");
+                await Task.Delay(1000);
+            }
+
+            if (_orientationStore == null) return;
+            foreach (var m in MonitorHelper.GetAllMonitors())
+                if (layout.Any(e => e.Key == m.Key && e.Orientation == m.Orientation))
+                    _orientationStore.Confirm(profile, m);
+        }
+
+        private void Layout_Click(object sender, RoutedEventArgs e)
+        {
+            if (_layoutStore == null || _orientationStore == null) return;
+            var window = new LayoutWindow(_layoutStore, _orientationStore, SelectedProfile, AppendLog) { Owner = this };
+            window.ShowDialog();
         }
 
         // Manual check: confirmations are saved under the profile applied most recently.

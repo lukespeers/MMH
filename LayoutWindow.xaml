@@ -1,0 +1,137 @@
+<Window x:Class="MMH.LayoutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MMH - Monitor layout" Width="560" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="#12191C" FontFamily="Segoe UI" Foreground="#E6F4F6"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="CardBrush" Color="#1C2A30"/>
+        <SolidColorBrush x:Key="PetalBrush" Color="#2F8F9D"/>
+        <SolidColorBrush x:Key="PetalHoverBrush" Color="#3FB4C3"/>
+        <SolidColorBrush x:Key="PetalStrokeBrush" Color="#7FD3DC"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#8FB3B9"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#2A3D44"/>
+
+        <!-- Pill-shaped choice chips (orientation, target profile) -->
+        <Style TargetType="RadioButton">
+            <Setter Property="MinWidth" Value="30"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="bd" CornerRadius="14" Background="#12191C" Padding="10,0"
+                                BorderBrush="{StaticResource LineBrush}" BorderThickness="1.5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PetalStrokeBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource PetalBrush}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PetalStrokeBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TextButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#E6F4F6"/>
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="15" Padding="14,0"
+                                BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource PetalHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource TextButton}">
+            <Setter Property="Background" Value="{StaticResource PetalBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="16,14,16,14">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Monitor layout" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="Drag monitors to arrange them. Click one to change its rotation."
+                           FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource Label}" Text="Profile"/>
+                <RadioButton x:Name="Profile1Chip" GroupName="Profile" Tag="1" Content="1" Checked="Profile_Checked"/>
+                <RadioButton x:Name="Profile2Chip" GroupName="Profile" Tag="2" Content="2" Checked="Profile_Checked"/>
+                <RadioButton x:Name="Profile3Chip" GroupName="Profile" Tag="3" Content="3" Checked="Profile_Checked" Margin="0"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Background="#0E1416" CornerRadius="10" Height="260" Margin="0,12,0,0"
+                BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+            <Canvas x:Name="LayoutCanvas" ClipToBounds="True" Background="Transparent"/>
+        </Border>
+
+        <!-- Rotation of the selected monitor -->
+        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+            <TextBlock x:Name="SelectedText" Style="{StaticResource Label}" Width="110" TextTrimming="CharacterEllipsis"/>
+            <RadioButton x:Name="Orient0" GroupName="Orientation" Tag="0" Content="Landscape" Checked="Orientation_Checked"/>
+            <RadioButton x:Name="Orient1" GroupName="Orientation" Tag="1" Content="Portrait" Checked="Orientation_Checked"/>
+            <RadioButton x:Name="Orient2" GroupName="Orientation" Tag="2" Content="Landscape (flipped)" Checked="Orientation_Checked"/>
+            <RadioButton x:Name="Orient3" GroupName="Orientation" Tag="3" Content="Portrait (flipped)" Checked="Orientation_Checked"/>
+        </StackPanel>
+
+        <!-- Actions for the chosen profile's layout -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="ClearButton" Style="{StaticResource TextButton}" Content="Forget" Click="Clear_Click"
+                    ToolTip="Remove this profile's saved layout"/>
+            <Button x:Name="ResetButton" Style="{StaticResource TextButton}" Content="Revert" Click="Reset_Click"
+                    ToolTip="Discard changes and show the saved layout again"/>
+            <Button x:Name="SaveButton" Style="{StaticResource TextButton}" Content="Save" Click="Save_Click"
+                    ToolTip="Save this layout to the profile. It's applied the next time you apply the profile"/>
+            <Button x:Name="ApplyButton" Style="{StaticResource AccentButton}" Content="Save &amp; apply now" Click="Apply_Click"
+                    ToolTip="Save, then apply this layout to the monitors that are on now (Keep/Revert)"/>
+        </StackPanel>
+
+        <TextBlock x:Name="StatusText" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,12,0,0"
+                   TextWrapping="Wrap"/>
+    </StackPanel>
+</Window>
