@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -23,7 +23,14 @@ public static class MonitorHelper
         public int Height { get; set; }
 
         public bool IsPrimary { get; set; }
+
+        /// <summary>Top-left of the monitor on the desktop, in physical pixels (primary is at 0,0).</summary>
+        public int PositionX { get; set; }
+        public int PositionY { get; set; }
     }
+
+    /// <summary>Where a monitor should go: desktop position (physical pixels) and DMDO orientation.</summary>
+    public record LayoutTarget(string DeviceName, int X, int Y, int Orientation);
 
     public static List<MonitorInfo> GetAllMonitors()
     {
@@ -48,6 +55,8 @@ public static class MonitorHelper
                         info.Orientation = dm.dmDisplayOrientation;
                         info.Width = dm.dmPelsWidth;
                         info.Height = dm.dmPelsHeight;
+                        info.PositionX = dm.dmPositionX;
+                        info.PositionY = dm.dmPositionY;
                     }
                 }
 
@@ -84,6 +93,47 @@ public static class MonitorHelper
         return rc == NativeMethods.DISP_CHANGE_SUCCESSFUL ? null : $"ChangeDisplaySettingsEx returned {rc} for {deviceName}.";
     }
 
+    /// <summary>
+    /// Moves and rotates several monitors in one go: each change is staged with CDS_NORESET,
+    /// then applied together (Windows needs all positions at once so displays stay touching).
+    /// Returns null on success, or an error message. No admin rights needed.
+    /// </summary>
+    public static string? ApplyLayout(IEnumerable<LayoutTarget> targets)
+    {
+        var errors = new List<string>();
+        foreach (var t in targets)
+        {
+            var dm = NewDevMode();
+            if (!NativeMethods.EnumDisplaySettings(t.DeviceName, NativeMethods.ENUM_CURRENT_SETTINGS, ref dm))
+            {
+                errors.Add($"Could not read current settings for {t.DeviceName}.");
+                continue;
+            }
+
+            int orientation = ((t.Orientation % 4) + 4) % 4;
+            if ((dm.dmDisplayOrientation % 2) != (orientation % 2))
+                (dm.dmPelsWidth, dm.dmPelsHeight) = (dm.dmPelsHeight, dm.dmPelsWidth);
+
+            dm.dmDisplayOrientation = orientation;
+            dm.dmPositionX = t.X;
+            dm.dmPositionY = t.Y;
+            dm.dmFields = NativeMethods.DM_POSITION | NativeMethods.DM_DISPLAYORIENTATION
+                        | NativeMethods.DM_PELSWIDTH | NativeMethods.DM_PELSHEIGHT;
+
+            int rc = NativeMethods.ChangeDisplaySettingsEx(t.DeviceName, ref dm, IntPtr.Zero,
+                NativeMethods.CDS_UPDATEREGISTRY | NativeMethods.CDS_NORESET, IntPtr.Zero);
+            if (rc != NativeMethods.DISP_CHANGE_SUCCESSFUL)
+                errors.Add($"ChangeDisplaySettingsEx returned {rc} for {t.DeviceName}.");
+        }
+
+        // Apply everything that was staged.
+        int final = NativeMethods.ChangeDisplaySettingsEx(null, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero);
+        if (final != NativeMethods.DISP_CHANGE_SUCCESSFUL)
+            errors.Add($"Applying the layout returned {final}.");
+
+        return errors.Count == 0 ? null : string.Join(" ", errors);
+    }
+
     private static string? GetMonitorDeviceId(string adapterDeviceName)
     {
         var dd = new NativeMethods.DISPLAY_DEVICE { cb = Marshal.SizeOf<NativeMethods.DISPLAY_DEVICE>() };
@@ -106,10 +156,12 @@ public static class MonitorHelper
     private static class NativeMethods
     {
         public const int ENUM_CURRENT_SETTINGS = -1;
+        public const int DM_POSITION = 0x00000020;
         public const int DM_DISPLAYORIENTATION = 0x00000080;
         public const int DM_PELSWIDTH = 0x00080000;
         public const int DM_PELSHEIGHT = 0x00100000;
         public const uint CDS_UPDATEREGISTRY = 0x00000001;
+        public const uint CDS_NORESET = 0x10000000;
         public const int DISP_CHANGE_SUCCESSFUL = 0;
 
         public delegate bool MonitorEnumDelegate(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
@@ -125,6 +177,10 @@ public static class MonitorHelper
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern int ChangeDisplaySettingsEx(string lpszDeviceName, ref DEVMODE lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
+
+        // Overload used to apply changes staged with CDS_NORESET (null device, null DEVMODE).
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern int ChangeDisplaySettingsEx(string? lpszDeviceName, IntPtr lpDevMode, IntPtr hwnd, uint dwflags, IntPtr lParam);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum, ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);

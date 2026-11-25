@@ -20,11 +20,13 @@ Output: `bin\Debug\net10.0-windows7.0\MMH.exe`. A running MMH.exe locks this fol
 - **Orientation**: after an Apply, each monitor is compared with the orientation last confirmed **for that profile** (`orientation.json`, keyed `Profile{n}|{monitor DeviceID}`). On a mismatch, `OrientationPromptWindow` shows a four-petal "DOWN" clover, and `OrientationConfirmWindow` offers Keep/Revert (15 s auto-revert). Rotation uses `ChangeDisplaySettingsEx` in `MonitorHelper.SetOrientation` and needs no admin rights.
   - DMDO math: picking the petal rotated `k` quarter-turns clockwise sets orientation `(current - k) mod 4`. Verified on real hardware.
   - Windows can't detect a physical rotation of a monitor. Only a change in Windows' own orientation or aspect ratio is detected; the **Check Orientation** button covers the rest.
+- **Monitor layout per profile**: `LayoutWindow` edits a profile's saved layout (position + rotation of each monitor) without touching the screens; `LayoutStore` keeps it in `layouts.json`, keyed by monitor DeviceID. After an Apply, `RestoreSavedLayoutAsync` moves/rotates the monitors that are on (shifted so the current primary stays at 0,0) via `MonitorHelper.ApplyLayout` (`ChangeDisplaySettingsEx` with `CDS_NORESET`, then one apply; no admin), and confirms their orientation so the orientation prompt doesn't ask again.
+- **Main window**: clicking a profile card selects it (Edit mode and the Layout editor work on the selected profile); each card's Apply button applies it. The Active pill comes from the live display state (`Get-DisplayInfo`), not the last profile applied.
 - **Identify Monitors**: `MonitorBadgeWindow`, a full-screen overlay in the same clover style. Esc or a click closes every monitor's overlay.
 
 ## Files at runtime
 
-- `profiles.json` and `orientation.json`: next to the exe.
+- `profiles.json`, `orientation.json` and `layouts.json`: next to the exe.
 - Logs: `%LocalAppData%\MMH\logs\mmh-YYYY-MM-DD.log`. They contain the generated script and a transcript with DisplayConfig's before/after display table.
 
 ## Workflow

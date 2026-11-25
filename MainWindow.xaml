@@ -50,24 +50,35 @@
             </Setter>
         </Style>
 
-        <!-- The clickable top row of a profile card -->
-        <Style x:Key="CardButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#E6F4F6"/>
+        <!-- The clickable top row of a profile card: click selects the profile for editing -->
+        <Style x:Key="CardHeader" TargetType="Grid">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Margin" Value="10,9"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="ToolTip" Value="Click to apply this profile"/>
+            <Setter Property="ToolTip" Value="Click to select this profile (Edit and Layout work on the selected profile)"/>
+        </Style>
+
+        <Style x:Key="ApplyButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="Transparent" CornerRadius="10" Padding="10,9">
-                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                        <Border x:Name="bd" Background="{StaticResource PetalBrush}" CornerRadius="14" Padding="14,0"
+                                BorderBrush="{StaticResource PetalStrokeBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource CardHoverBrush}"/>
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource PetalHoverBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#263F47"/>
+                                <Setter TargetName="bd" Property="Background" Value="#257682"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -83,7 +94,7 @@
             <Setter Property="Stroke" Value="{StaticResource PetalStrokeBrush}"/>
             <Setter Property="StrokeThickness" Value="1.5"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border, AncestorLevel=1}}" Value="True">
                     <Setter Property="Fill" Value="{StaticResource PetalHoverBrush}"/>
                 </DataTrigger>
             </Style.Triggers>
@@ -180,6 +191,11 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="11"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource CardHoverBrush}"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="EditorPanel" TargetType="StackPanel">
@@ -201,6 +217,7 @@
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Button Style="{StaticResource IconButton}" Content="&#xE7F4;" ToolTip="Identify Monitors" Click="IdentifyMonitors_Click"/>
+                <Button Style="{StaticResource IconButton}" Content="&#xE8A9;" ToolTip="Monitor layout (position and rotation, saved per profile)" Click="Layout_Click"/>
                 <Button Style="{StaticResource IconButton}" Content="&#xE7AD;" ToolTip="Check Orientation" Click="CheckOrientation_Click"/>
                 <Button Style="{StaticResource IconButton}" Content="&#xE72C;" ToolTip="Restore All Displays (turn every display on)" Click="RestoreAll_Click"/>
                 <Button x:Name="EditButton" Style="{StaticResource IconButton}" Content="&#xE70F;" ToolTip="Edit profiles" Click="EditToggle_Click"/>
@@ -210,11 +227,11 @@
         <!-- Profile 1 -->
         <Border x:Name="Profile1_Card" Style="{StaticResource Card}">
             <StackPanel>
-                <Button Style="{StaticResource CardButton}" Click="ApplyProfile1_Click">
-                    <Grid>
+                <Grid Style="{StaticResource CardHeader}" Tag="1" MouseLeftButtonUp="Card_Select">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Grid>
@@ -228,8 +245,9 @@
                         <Border x:Name="Profile1_Active" Grid.Column="2" Style="{StaticResource ActivePill}">
                             <TextBlock Text="Active" FontSize="11" Foreground="{StaticResource PetalStrokeBrush}"/>
                         </Border>
-                    </Grid>
-                </Button>
+                        <Button Grid.Column="3" Style="{StaticResource ApplyButton}" Content="Apply" Click="ApplyProfile1_Click"
+                                ToolTip="Apply profile 1 now"/>
+                </Grid>
                 <StackPanel x:Name="Profile1_Editor" Style="{StaticResource EditorPanel}">
                     <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
                         <TextBlock Style="{StaticResource EditorLabel}" Text="Displays on"/>
@@ -247,11 +265,11 @@
         <!-- Profile 2 -->
         <Border x:Name="Profile2_Card" Style="{StaticResource Card}">
             <StackPanel>
-                <Button Style="{StaticResource CardButton}" Click="ApplyProfile2_Click">
-                    <Grid>
+                <Grid Style="{StaticResource CardHeader}" Tag="2" MouseLeftButtonUp="Card_Select">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Grid>
@@ -265,8 +283,9 @@
                         <Border x:Name="Profile2_Active" Grid.Column="2" Style="{StaticResource ActivePill}">
                             <TextBlock Text="Active" FontSize="11" Foreground="{StaticResource PetalStrokeBrush}"/>
                         </Border>
-                    </Grid>
-                </Button>
+                        <Button Grid.Column="3" Style="{StaticResource ApplyButton}" Content="Apply" Click="ApplyProfile2_Click"
+                                ToolTip="Apply profile 2 now"/>
+                </Grid>
                 <StackPanel x:Name="Profile2_Editor" Style="{StaticResource EditorPanel}">
                     <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
                         <TextBlock Style="{StaticResource EditorLabel}" Text="Displays on"/>
@@ -284,11 +303,11 @@
         <!-- Profile 3 -->
         <Border x:Name="Profile3_Card" Style="{StaticResource Card}">
             <StackPanel>
-                <Button Style="{StaticResource CardButton}" Click="ApplyProfile3_Click">
-                    <Grid>
+                <Grid Style="{StaticResource CardHeader}" Tag="3" MouseLeftButtonUp="Card_Select">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Grid>
@@ -302,8 +321,9 @@
                         <Border x:Name="Profile3_Active" Grid.Column="2" Style="{StaticResource ActivePill}">
                             <TextBlock Text="Active" FontSize="11" Foreground="{StaticResource PetalStrokeBrush}"/>
                         </Border>
-                    </Grid>
-                </Button>
+                        <Button Grid.Column="3" Style="{StaticResource ApplyButton}" Content="Apply" Click="ApplyProfile3_Click"
+                                ToolTip="Apply profile 3 now"/>
+                </Grid>
                 <StackPanel x:Name="Profile3_Editor" Style="{StaticResource EditorPanel}">
                     <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
                         <TextBlock Style="{StaticResource EditorLabel}" Text="Displays on"/>
@@ -325,7 +345,7 @@
             <Button Style="{StaticResource TextButton}" Content="Regenerate" FontSize="11" Click="Regenerate_Click"/>
         </StackPanel>
 
-        <TextBlock x:Name="HintText" Text="Click a profile to apply it" FontSize="11"
+        <TextBlock x:Name="HintText" Text="Click a profile to select it, then Apply" FontSize="11"
                    Foreground="#6F9298" HorizontalAlignment="Center" Margin="0,2,0,0"/>
     </StackPanel>
 </Window>

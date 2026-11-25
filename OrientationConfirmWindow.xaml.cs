@@ -16,9 +16,10 @@ namespace MMH
 
         public bool Kept { get; private set; }
 
-        public OrientationConfirmWindow(Rect boundsDip)
+        public OrientationConfirmWindow(Rect boundsDip, string title = "Keep this orientation?")
         {
             InitializeComponent();
+            TitleText.Text = title;
 
             Left = boundsDip.Left;
             Top = boundsDip.Top;
